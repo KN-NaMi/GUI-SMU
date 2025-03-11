@@ -1,42 +1,106 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+.toolbar {
+  width: 100%;
+  height: 150px;
+  background-color: #191919;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  position: fixed;
+  top: 0;
+  z-index: 1000;
+  justify-content: space-between;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.start-stop-buttons{
+  display: flex;
+  padding: 0 0 80px;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.start-btn{
+  cursor: pointer;
+  padding: 5px 5px;
+  height: 38px;
+  width: 38px;
+  background-color: green;
+  border: 0;
+  transition: background-color 0.5s;
+  border-radius: 12px;
+  margin: 5px;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+.start-btn img {
+  width: 20px;
+  height: 20px;
+  justify-content: center;
+  align-items: center;
 }
 
-.card {
-  padding: 2em;
+.start-btn:hover {
+  background-color: greenyellow;
 }
 
-.read-the-docs {
-  color: #888;
+.stop-btn{
+  cursor: pointer;
+  padding: 5px 5px;
+  height: 38px;
+  width: 38px;
+  background-color: darkred;
+  border: 0;
+  transition: background-color 0.5s;
+  border-radius: 12px;
+  margin: 5px;
+}
+
+.stop-btn img{
+  width: 20px;
+  height: 20px;
+  justify-content: center;
+  align-items: center;
+}
+
+.stop-btn:hover{
+  background-color: red;
+}
+
+.input-container{
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  justify-items: start;
+  padding-right: 20px;
+}
+
+input {
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  width: 190px;
+  margin-right: 10px;
+}
+
+.input-label-corelation{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+.COM-select{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#current-limiter{
+  width: 140px;
+  margin-right: 5px;
+}
+
+#current-limiter-units{
+  width: 45px;
+}
+
+select{
+  width: 120px;
+  margin: 0 0 5px 0;
 }
