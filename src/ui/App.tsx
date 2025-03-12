@@ -23,7 +23,7 @@ const Toolbar: React.FC<ToolbarProps> = () => {
 
         </div>
 
-        <div className='label-select-corelation'>
+        <div className='input-label-corelation'>
           <label htmlFor="current-voltage-src">Typ źródła</label>
           <select 
             id="current-voltage-src"
@@ -34,22 +34,6 @@ const Toolbar: React.FC<ToolbarProps> = () => {
             <option value="current-src">Źródło prądowe</option>
           </select>
         </div>
-      </div>
-
-      <div className='COM-select'>
-        <label htmlFor="COM1">COM 1</label>
-        <select id="COM1">
-          <option value="-">-</option>
-          <option value="Voltomierz">Voltomierz</option>
-          <option value="Amperomierz">Amperomierz</option>
-        </select>
-
-        <label htmlFor="COM2">COM 2</label>
-        <select id="COM2">
-          <option value="-">-</option>
-          <option value="Voltomierz">Voltomierz</option>
-          <option value="Amperomierz">Amperomierz</option>
-        </select>
       </div>
 
       <div className='input-container'>
@@ -113,6 +97,24 @@ const Toolbar: React.FC<ToolbarProps> = () => {
             </div>
         
       </div>
+
+      <fieldset className='presets'>
+        <legend>Presety</legend>
+        <button className='save-preset-btn'>Zapisz preset</button>
+        <button className='load-preset-btn'>Wczytaj preset</button>
+        <div className='input-label-corelation'>
+          <label htmlFor="choose-presets">Presety</label>
+          <select name="choose-presets" id="choose-presets">
+
+          </select>
+        </div>
+      </fieldset>
+
+      <fieldset className='graph-options'>
+        <legend>Wykres</legend>
+
+      </fieldset>
+
     </div>
   );
 };

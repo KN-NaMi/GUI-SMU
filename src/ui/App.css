@@ -3,13 +3,11 @@
   height: 150px;
   background-color: #191919;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: 140px 450px 148px 1fr;
   grid-template-rows: repeat(2, auto);
   gap: 20px;
   padding: 0 20px;
   box-sizing: border-box;
-  top: 0;
-  z-index: 1000;
 }
 
 .first-column{
@@ -24,6 +22,7 @@
 
 #current-voltage-src{
   width: 140px;
+  height: 30px;
 }
 
 .label-select-corelation{
@@ -44,10 +43,10 @@
 }
 
 .start-btn img {
+  display: flex;
   width: 20px;
   height: 20px;
-  justify-content: center;
-  align-items: center;
+  justify-self: center;
 }
 
 .start-btn:hover {
@@ -67,14 +66,28 @@
 }
 
 .stop-btn img{
+  display: flex;
   width: 20px;
   height: 20px;
-  justify-content: center;
-  align-items: center;
+  justify-self: center;
 }
 
 .stop-btn:hover{
   background-color: red;
+}
+
+.presets{
+  display: flex;
+  flex-direction: column;
+  width: 120px;
+  gap: 5px;
+  align-items: center;
+}
+
+.save-preset-btn,
+.load-preset-btn{
+  width: 110px;
+  height: 20px;
 }
 
 .input-container{
@@ -83,7 +96,6 @@
   grid-template-rows: repeat(2, auto); 
   gap: 10px;
   width: 450px;
-  justify-self: end;
   grid-template-areas: 
     "nw ne"
     "se sw";
@@ -118,12 +130,6 @@ input {
   flex-direction: column;
   align-items: flex-start;
   gap: 5px;
-}
-
-.COM-select{
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
 }
 
 #current-limiter,
