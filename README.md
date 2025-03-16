@@ -2,6 +2,8 @@
 
 Interface do obsługi, odczytu oraz zapisu pomiarów z jednostki SMU.
 
+![taskbar-alpha1 1](https://github.com/user-attachments/assets/b8776dc2-0aab-4577-833c-a7bc6a52d970)
+
 ## Narzędzia deweloperskie / technologie
 
 **Narzędzia potrzebe do rozwijania frontendu:**
