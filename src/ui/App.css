@@ -1,13 +1,19 @@
 .toolbar {
   width: 100%;
-  height: 150px;
+  height: 175px;
   background-color: #191919;
   display: grid;
-  grid-template-columns: 140px 450px 148px 1fr;
+  grid-template-columns: 140px 305px 148px 1fr;
   grid-template-rows: repeat(2, auto);
   gap: 20px;
   padding: 0 20px;
   box-sizing: border-box;
+  overflow: hidden;
+}
+
+.toolbar > * {
+  max-height: 100%;
+  overflow: auto;
 }
 
 .first-column{
@@ -85,7 +91,9 @@
 }
 
 .save-preset-btn,
-.load-preset-btn{
+.load-preset-btn,
+.new-series-btn,
+.delete-series-btn{
   width: 110px;
   height: 20px;
 }
@@ -95,7 +103,7 @@
   grid-template-columns: repeat(2, 1fr);
   grid-template-rows: repeat(2, auto); 
   gap: 10px;
-  width: 450px;
+  width: 305px;
   grid-template-areas: 
     "nw ne"
     "se sw";
@@ -116,6 +124,13 @@
 .se{
   grid-column: 2;
   grid-row: 2;
+}
+
+#U-max,
+#U-min,
+#I-min,
+#I-max{
+  width: 80px;
 }
 
 input {
@@ -146,4 +161,43 @@ input {
 select{
   width: 120px;
   margin: 0 0 5px 0;
+}
+
+.graph-options-div{
+  display: grid;
+  grid-template-columns: 300px 300px 140px 1fr;
+}
+
+.axes-options-div{
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.x-axis-options,
+.y-axis-options{
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  margin-top: -10px;
+}
+
+legend {
+  margin-bottom: 0;
+  padding: 0 5px;
+}
+
+.graph-options fieldset {
+  margin-top: -10px;
+}
+
+label {
+  white-space: nowrap;
+}
+
+#series-name{
+  width: 100px;
+}
+
+.series{
+  margin-left: 6px;
 }

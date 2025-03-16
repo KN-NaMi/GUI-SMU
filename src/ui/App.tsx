@@ -6,7 +6,21 @@ interface ToolbarProps {}
 const Toolbar: React.FC<ToolbarProps> = () => {
 
   const [sourceType, setSourceType] = useState<string>("voltage-src");
+  const [measuredValueX, setMeasuredValueX] = useState<string>("I");
+  const [measuredValueY, setMeasuredValueY] = useState<string>("U");
 
+  const handleChangeX = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newValue = e.target.value;
+    setMeasuredValueX(newValue);
+    setMeasuredValueY(newValue === "I" ? "U" : "I");
+  }
+
+  const handleChangeY = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newValue = e.target.value;
+    setMeasuredValueY(newValue);
+    setMeasuredValueX(newValue === "I" ? "U" : "I");
+  }
+  
   return (
     <div className='toolbar'>
       
@@ -112,7 +126,103 @@ const Toolbar: React.FC<ToolbarProps> = () => {
 
       <fieldset className='graph-options'>
         <legend>Wykres</legend>
-
+        <div className='graph-options-div'>
+          <fieldset className='x-axis'>
+            <legend>Oś X</legend>
+            <div className='x-axis-options'>
+              <div className='input-label-corelation'>
+                <label htmlFor="axis-type">Typ osi</label>
+                <select name="axis-type" id="">
+                  <option value="Linear">Liniowa</option>
+                  <option value="Logarythmic">Logarytmiczna</option>
+                </select>
+              </div>
+              <div className='input-label-corelation'>
+                <label htmlFor="i-u-select">Wielkość mierzona</label>
+                <select name="i-u-select"
+                value={measuredValueX} 
+                onChange={handleChangeX}>
+                  <option value="I">I</option>
+                  <option value="U">U</option>
+                </select>
+              </div>
+              <div></div>
+              {measuredValueX === "I" && (
+              <>
+                <select name="axis-unit">
+                <option value="μA">μA</option>
+                      <option value="mA">mA</option>
+                      <option value="A">A</option>
+                      <option value="kA">kA</option>
+                </select>
+              </>
+              )}
+              {measuredValueX === "U" && (
+              <>
+                <select name="axis-unit">
+                <option value="μV">μV</option>
+                      <option value="mV">mV</option>
+                      <option value="V">V</option>
+                      <option value="kV">kV</option>
+                </select>
+              </>
+              )}
+            </div>
+          </fieldset>
+          <fieldset className='y-axis'>
+            <legend>Oś Y</legend>
+            <div className='y-axis-options'>
+              <div className='input-label-corelation'>
+                <label htmlFor="axis-type">Typ osi</label>
+                <select name="axis-type" id="">
+                  <option value="Linear">Liniowa</option>
+                  <option value="Logarythmic">Logarytmiczna</option>
+                </select>
+              </div>
+              <div className='input-label-corelation'>
+                <label htmlFor="">Wielkość mierzona</label>
+                <select name="i-u-select" 
+                value={measuredValueY} 
+                onChange={handleChangeY}>
+                  <option value="I">I</option>
+                  <option value="U">U</option>
+                </select>
+              </div>
+              <div></div>
+              {measuredValueY === "U" && (
+                <>
+                  <select name="axis-unit">
+                  <option value="μV">μV</option>
+                        <option value="mV">mV</option>
+                        <option value="V">V</option>
+                        <option value="kV">kV</option>
+                  </select>
+                </>
+              )}
+              {measuredValueY === "I" && (
+                <>
+                  <select name="axis-unit">
+                  <option value="μA">μA</option>
+                        <option value="mA">mA</option>
+                        <option value="A">A</option>
+                        <option value="kA">kA</option>
+                  </select>
+                </>
+              )}
+            </div>
+          </fieldset>
+          <fieldset className='axes-options'>
+            <legend>Opcje</legend>
+            <div className='axes-options-div'>
+              <input type="text" id='series-name' placeholder='Nazwa serii'/>
+              <button className='new-series-btn'>Nowa Seria</button>
+              <button className='delete-series-btn'>Usuń Serię</button>
+            </div>
+          </fieldset>
+          <fieldset className='series'>
+            <legend>Serie</legend>
+          </fieldset>
+        </div>
       </fieldset>
 
     </div>
