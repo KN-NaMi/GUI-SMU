@@ -1,0 +1,20 @@
+Export do pliku csv (z opcji z góry)
+Sygnał dźwiękowy po zakończeniu pomiaru
+Serie pomiarowe z różnymi kolorami
+
+json back->front:
+    step (od 0)
+    current
+    voltage
+
+json front->back:
+    port:
+    timeout:
+    isVoltSrc: true/false
+    voltLimit:
+    currLimit:
+    iMax:
+    iMin:
+    uMax:
+    uMin:
+    iterations:

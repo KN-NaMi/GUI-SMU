@@ -22,5 +22,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src", "src/ui/App.tsx", "src/ui/main.tsx", "src/ui/vite-env.d.ts"]
+  "include": ["src", "src/ui/Toolbar.tsx", "src/ui/main.tsx", "src/ui/vite-env.d.ts", "src/ui/ScatterChart.tsx"]
 }

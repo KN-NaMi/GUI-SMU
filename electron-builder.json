@@ -1,6 +1,7 @@
 {
     "appId": "com.j-naumowicz.electron-course",
     "files": ["dist-electron", "dist-react"],
+    "extraResources": ["dist-electron/preload.cjs"],
     "icon": "public/icon.ico",
     "mac": {
         "target": "dmg"

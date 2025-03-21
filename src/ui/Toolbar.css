@@ -1,0 +1,203 @@
+.toolbar {
+  width: 100%;
+  height: 175px;
+  background-color: #191919;
+  display: grid;
+  grid-template-columns: 140px 305px 148px 1fr;
+  grid-template-rows: repeat(2, auto);
+  gap: 20px;
+  padding: 0 20px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.toolbar > * {
+  max-height: 100%;
+  overflow: auto;
+}
+
+.first-column{
+  display: grid;
+  grid-template-rows: repeat(2, 1fr);
+}
+
+.start-stop-buttons{
+  display: flex;
+  align-items: center;
+}
+
+#current-voltage-src{
+  width: 140px;
+  height: 30px;
+}
+
+.label-select-corelation{
+  display: grid;
+  grid-template-rows: auto;
+}
+
+.start-btn{
+  cursor: pointer;
+  padding: 5px 5px;
+  height: 38px;
+  width: 38px;
+  background-color: green;
+  border: 0;
+  transition: background-color 0.5s;
+  border-radius: 12px;
+  margin: 5px;
+}
+
+.start-btn img {
+  display: flex;
+  width: 20px;
+  height: 20px;
+  justify-self: center;
+}
+
+.start-btn:hover {
+  background-color: greenyellow;
+}
+
+.stop-btn{
+  cursor: pointer;
+  padding: 5px 5px;
+  height: 38px;
+  width: 38px;
+  background-color: darkred;
+  border: 0;
+  transition: background-color 0.5s;
+  border-radius: 12px;
+  margin: 5px;
+}
+
+.stop-btn img{
+  display: flex;
+  width: 20px;
+  height: 20px;
+  justify-self: center;
+}
+
+.stop-btn:hover{
+  background-color: red;
+}
+
+.presets{
+  display: flex;
+  flex-direction: column;
+  width: 120px;
+  gap: 5px;
+  align-items: center;
+}
+
+.save-preset-btn,
+.load-preset-btn,
+.new-series-btn,
+.delete-series-btn{
+  width: 110px;
+  height: 20px;
+}
+
+.input-container{
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, auto); 
+  gap: 10px;
+  width: 305px;
+  grid-template-areas: 
+    "nw ne"
+    "se sw";
+}
+
+.nw{
+  grid-column: 1;
+  grid-row: 1;
+}
+.ne{
+  grid-column: 2;
+  grid-row: 1;
+}
+.sw{
+  grid-column: 1;
+  grid-row: 2;
+}
+.se{
+  grid-column: 2;
+  grid-row: 2;
+}
+
+#U-max,
+#U-min,
+#I-min,
+#I-max{
+  width: 80px;
+}
+
+input {
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  width: 190px;
+}
+
+.input-label-corelation{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+#current-limiter,
+#voltage-limiter{
+  width: 140px;
+  margin-right: 5px;
+}
+
+#current-limiter-units,
+#voltage-limiter-units{
+  width: 45px;
+}
+
+select{
+  width: 120px;
+  margin: 0 0 5px 0;
+}
+
+.graph-options-div{
+  display: grid;
+  grid-template-columns: 300px 300px 140px 1fr;
+}
+
+.axes-options-div{
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.x-axis-options,
+.y-axis-options{
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  margin-top: -10px;
+}
+
+legend {
+  margin-bottom: 0;
+  padding: 0 5px;
+}
+
+.graph-options fieldset {
+  margin-top: -10px;
+}
+
+label {
+  white-space: nowrap;
+}
+
+#series-name{
+  width: 100px;
+}
+
+.series{
+  margin-left: 6px;
+}
