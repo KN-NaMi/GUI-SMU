@@ -1,5 +1,5 @@
 import './Toolbar.css'
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 // interface ToolbarProps {
 //   setXScale: (scale: "linear" | "log") => void;
@@ -8,6 +8,23 @@ import React, { useState } from "react";
 // { setXScale, setYScale } to będzie w toolbarze jako argumenty
 //: React.FC<ToolbarProps> to jest typ funkcji toolbar
 const Toolbar = () => {
+
+  const [scale, setScale] = useState(1);
+
+  const updateScale = () => {
+    const baseWidth = 1920;
+    const availableWidth = window.innerWidth;
+
+    const newScale = Math.min(availableWidth / baseWidth);
+    setScale(newScale);
+  };
+
+  useEffect(() => {
+    
+    window.addEventListener("resize", updateScale);
+    updateScale();
+    return () => window.removeEventListener("resize", updateScale);
+  }, []);
 
   const [sourceType, setSourceType] = useState<string>("voltage-src");
   const [measuredValueX, setMeasuredValueX] = useState<string>("I");
@@ -26,196 +43,140 @@ const Toolbar = () => {
   }
   
   return (
-    <div className='toolbar'>
-      
-      <div className='first-column'>
-        <div className='start-stop-buttons'>
-          {/* start and stop buttons */}
-          <button className='start-btn'>
-            <img src="/play.png" alt="play-icon" />
-          </button>
-
-          <button className='stop-btn'>
-            <img src="/stop.png" alt="stop-icon" />
-          </button>
-
-        </div>
-
-        <div className='input-label-corelation'>
-          <label htmlFor="current-voltage-src">Typ źródła</label>
-          <select 
-            id="current-voltage-src"
-            value={sourceType}
-            onChange={(e) => setSourceType(e.target.value)}
-          >
-            <option value="voltage-src">Źródło napięciowe</option>
-            <option value="current-src">Źródło prądowe</option>
-          </select>
-        </div>
-      </div>
-
-      <div className='input-container'>
-        {sourceType === "voltage-src" && (
-          <>
-            {/* Voltage source options*/}
-            <div className='input-label-corelation nw'>
-              <label htmlFor="current-limiter">Ograniczenie prądowe</label>
-              <div>
-                <input type="text" id='current-limiter' />
-                <select name="units" id="current-limiter-units">
-                  <option value="μA">μA</option>
-                  <option value="mA">mA</option>
-                  <option value="A">A</option>
-                  <option value="kA">kA</option>
-                </select>
-              </div>
-            </div>
-
-            <div className='input-label-corelation ne'>
-              <label htmlFor="U-max">U_max</label>
-              <input type="text" id='U-max'/>
-            </div>
-            
-            <div className='input-label-corelation se'>
-              <label htmlFor="U-min">U_min</label>
-              <input type="text" id='U-min'/>
-            </div>
-          </>
-        )}
-        {sourceType === "current-src" && (
-          <>
-            {/* Current source options */}
-            <div className='input-label-corelation nw'>
-              <label htmlFor="voltage-limiter">Ograniczenie napięciowe</label>
-              <div>
-                <input type="text" id='voltage-limiter' />
-                <select name="units" id="voltage-limiter-units">
-                  <option value="μV">μV</option>
-                  <option value="mV">mV</option>
-                  <option value="V">V</option>
-                  <option value="kV">kV</option>
-                </select>
-              </div>
-            </div>
-
-            <div className='input-label-corelation ne'>
-              <label htmlFor="I-max">I_max</label>
-              <input type="text" id='I-max'/>
-            </div>
-
-            <div className='input-label-corelation se'>
-              <label htmlFor="I-min">I_min</label>
-              <input type="text" id='I-min'/>
-            </div>
-          </>
-        )}
-            <div className='input-label-corelation sw'>
-              <label htmlFor="how-many-measurements">Ilość punktów pomiarowych</label>
-              <input type="text" id='how-many-measurements'/>
-            </div>
+    <div className='toolbar-container' >
+      <div className='toolbar' style={{transform: `scale(${scale})`}}>
         
-      </div>
+        <div className='first-column'>
+          <div className='start-stop-buttons'>
+            {/* start and stop buttons */}
+            <button className='start-btn'>
+              <img src="/play.png" alt="play-icon" />
+            </button>
 
-      {/* Presets */}
-      <fieldset className='presets'>
-        <legend>Presety</legend>
-        <button className='save-preset-btn'>Zapisz preset</button>
-        <button className='load-preset-btn'>Wczytaj preset</button>
-        <div className='input-label-corelation'>
-          <label htmlFor="choose-presets">Presety</label>
-          <select name="choose-presets" id="choose-presets">
+            <button className='stop-btn'>
+              <img src="/stop.png" alt="stop-icon" />
+            </button>
 
-          </select>
+          </div>
+
+          <div className='input-label-corelation'>
+            <label htmlFor="current-voltage-src">Typ źródła</label>
+            <select 
+              id="current-voltage-src"
+              value={sourceType}
+              onChange={(e) => setSourceType(e.target.value)}
+            >
+              <option value="voltage-src">Źródło napięciowe</option>
+              <option value="current-src">Źródło prądowe</option>
+            </select>
+          </div>
         </div>
-      </fieldset>
 
-      {/* Graph options */}
-      <fieldset className='graph-options'>
-        <legend>Wykres</legend>
-        <div className='graph-options-div'>
-          {/* X Axis */}
-          <fieldset className='x-axis'>
-            <legend>Oś X</legend>
-            <div className='x-axis-options'>
-              <div className='input-label-corelation'>
-                <label htmlFor="axis-type">Typ osi</label>
-                <select 
-                name="axis-type" 
-                id="x-type-select"
-                // onChange={(e) => setXScale(e.target.value as "linear" | "log")}
-                >
-                  <option value="linear">Liniowa</option>
-                  <option value="log">Logarytmiczna</option>
-                </select>
-              </div>
-              <div className='input-label-corelation'>
-                <label htmlFor="i-u-select">Wielkość mierzona</label>
-                <select name="i-u-select"
-                value={measuredValueX} 
-                onChange={handleChangeX}>
-                  <option value="I">I</option>
-                  <option value="U">U</option>
-                </select>
-              </div>
-              <div></div>
-              {measuredValueX === "I" && (
-              <>
-                <select name="axis-unit">
-                <option value="μA">μA</option>
-                      <option value="mA">mA</option>
-                      <option value="A">A</option>
-                      <option value="kA">kA</option>
-                </select>
-              </>
-              )}
-              {measuredValueX === "U" && (
-              <>
-                <select name="axis-unit">
-                <option value="μV">μV</option>
-                      <option value="mV">mV</option>
-                      <option value="V">V</option>
-                      <option value="kV">kV</option>
-                </select>
-              </>
-              )}
-            </div>
-          </fieldset>
-          {/* Y Axis  */}
-          <fieldset className='y-axis'>
-            <legend>Oś Y</legend>
-            <div className='y-axis-options'>
-              <div className='input-label-corelation'>
-                <label htmlFor="axis-type">Typ osi</label>
-                <select 
-                name="axis-type" 
-                id="y-type-select"
-                // onChange={(e) => setYScale(e.target.value as "linear" | "log")}
-                >
-                  <option value="linear">Liniowa</option>
-                  <option value="log">Logarytmiczna</option>
-                </select>
-              </div>
-              <div className='input-label-corelation'>
-                <label htmlFor="">Wielkość mierzona</label>
-                <select name="i-u-select" 
-                value={measuredValueY} 
-                onChange={handleChangeY}>
-                  <option value="I">I</option>
-                  <option value="U">U</option>
-                </select>
-              </div>
-              <div></div>
-              {measuredValueY === "U" && (
-                <>
-                  <select name="axis-unit">
-                  <option value="μV">μV</option>
-                        <option value="mV">mV</option>
-                        <option value="V">V</option>
-                        <option value="kV">kV</option>
+        <div className='input-container'>
+          {sourceType === "voltage-src" && (
+            <>
+              {/* Voltage source options*/}
+              <div className='input-label-corelation nw'>
+                <label htmlFor="current-limiter">Ograniczenie prądowe</label>
+                <div>
+                  <input type="text" id='current-limiter' />
+                  <select name="units" id="current-limiter-units">
+                    <option value="μA">μA</option>
+                    <option value="mA">mA</option>
+                    <option value="A">A</option>
+                    <option value="kA">kA</option>
                   </select>
-                </>
-              )}
-              {measuredValueY === "I" && (
+                </div>
+              </div>
+
+              <div className='input-label-corelation ne'>
+                <label htmlFor="U-max">U_max</label>
+                <input type="text" id='U-max'/>
+              </div>
+              
+              <div className='input-label-corelation se'>
+                <label htmlFor="U-min">U_min</label>
+                <input type="text" id='U-min'/>
+              </div>
+            </>
+          )}
+          {sourceType === "current-src" && (
+            <>
+              {/* Current source options */}
+              <div className='input-label-corelation nw'>
+                <label htmlFor="voltage-limiter">Ograniczenie napięciowe</label>
+                <div>
+                  <input type="text" id='voltage-limiter' />
+                  <select name="units" id="voltage-limiter-units">
+                    <option value="μV">μV</option>
+                    <option value="mV">mV</option>
+                    <option value="V">V</option>
+                    <option value="kV">kV</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className='input-label-corelation ne'>
+                <label htmlFor="I-max">I_max</label>
+                <input type="text" id='I-max'/>
+              </div>
+
+              <div className='input-label-corelation se'>
+                <label htmlFor="I-min">I_min</label>
+                <input type="text" id='I-min'/>
+              </div>
+            </>
+          )}
+              <div className='input-label-corelation sw'>
+                <label htmlFor="how-many-measurements">Ilość punktów pomiarowych</label>
+                <input type="text" id='how-many-measurements'/>
+              </div>
+          
+        </div>
+
+        {/* Presets */}
+        <fieldset className='presets'>
+          <legend>Presety</legend>
+          <button className='save-preset-btn'>Zapisz preset</button>
+          <button className='load-preset-btn'>Wczytaj preset</button>
+          <div className='input-label-corelation'>
+            <label htmlFor="choose-presets">Presety</label>
+            <select name="choose-presets" id="choose-presets">
+
+            </select>
+          </div>
+        </fieldset>
+
+        {/* Graph options */}
+        <fieldset className='graph-options'>
+          <legend>Wykres</legend>
+          <div className='graph-options-div'>
+            {/* X Axis */}
+            <fieldset className='x-axis'>
+              <legend>Oś X</legend>
+              <div className='x-axis-options'>
+                <div className='input-label-corelation'>
+                  <label htmlFor="axis-type">Typ osi</label>
+                  <select 
+                  name="axis-type" 
+                  id="x-type-select"
+                  // onChange={(e) => setXScale(e.target.value as "linear" | "log")}
+                  >
+                    <option value="linear">Liniowa</option>
+                    <option value="log">Logarytmiczna</option>
+                  </select>
+                </div>
+                <div className='input-label-corelation'>
+                  <label htmlFor="i-u-select">Wielkość mierzona</label>
+                  <select name="i-u-select"
+                  value={measuredValueX} 
+                  onChange={handleChangeX}>
+                    <option value="I">I</option>
+                    <option value="U">U</option>
+                  </select>
+                </div>
+                <div></div>
+                {measuredValueX === "I" && (
                 <>
                   <select name="axis-unit">
                   <option value="μA">μA</option>
@@ -224,24 +185,82 @@ const Toolbar = () => {
                         <option value="kA">kA</option>
                   </select>
                 </>
-              )}
-            </div>
-          </fieldset>
-          {/* Options */}
-          <fieldset className='axes-options'>
-            <legend>Opcje</legend>
-            <div className='axes-options-div'>
-              <input type="text" id='series-name' placeholder='Nazwa serii'/>
-              <button className='new-series-btn'>Nowa Seria</button>
-              <button className='delete-series-btn'>Usuń Serię</button>
-            </div>
-          </fieldset>
-          <fieldset className='series'>
-            <legend>Serie</legend>
-          </fieldset>
-        </div>
-      </fieldset>
+                )}
+                {measuredValueX === "U" && (
+                <>
+                  <select name="axis-unit">
+                  <option value="μV">μV</option>
+                        <option value="mV">mV</option>
+                        <option value="V">V</option>
+                        <option value="kV">kV</option>
+                  </select>
+                </>
+                )}
+              </div>
+            </fieldset>
+            {/* Y Axis  */}
+            <fieldset className='y-axis'>
+              <legend>Oś Y</legend>
+              <div className='y-axis-options'>
+                <div className='input-label-corelation'>
+                  <label htmlFor="axis-type">Typ osi</label>
+                  <select 
+                  name="axis-type" 
+                  id="y-type-select"
+                  // onChange={(e) => setYScale(e.target.value as "linear" | "log")}
+                  >
+                    <option value="linear">Liniowa</option>
+                    <option value="log">Logarytmiczna</option>
+                  </select>
+                </div>
+                <div className='input-label-corelation'>
+                  <label htmlFor="">Wielkość mierzona</label>
+                  <select name="i-u-select" 
+                  value={measuredValueY} 
+                  onChange={handleChangeY}>
+                    <option value="I">I</option>
+                    <option value="U">U</option>
+                  </select>
+                </div>
+                <div></div>
+                {measuredValueY === "U" && (
+                  <>
+                    <select name="axis-unit">
+                    <option value="μV">μV</option>
+                          <option value="mV">mV</option>
+                          <option value="V">V</option>
+                          <option value="kV">kV</option>
+                    </select>
+                  </>
+                )}
+                {measuredValueY === "I" && (
+                  <>
+                    <select name="axis-unit">
+                    <option value="μA">μA</option>
+                          <option value="mA">mA</option>
+                          <option value="A">A</option>
+                          <option value="kA">kA</option>
+                    </select>
+                  </>
+                )}
+              </div>
+            </fieldset>
+            {/* Options */}
+            <fieldset className='axes-options'>
+              <legend>Opcje</legend>
+              <div className='axes-options-div'>
+                <input type="text" id='series-name' placeholder='Nazwa serii'/>
+                <button className='new-series-btn'>Nowa Seria</button>
+                <button className='delete-series-btn'>Usuń Serię</button>
+              </div>
+            </fieldset>
+            <fieldset className='series'>
+              <legend>Serie</legend>
+            </fieldset>
+          </div>
+        </fieldset>
 
+      </div>
     </div>
   );
 };
