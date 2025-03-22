@@ -23,3 +23,8 @@ dist-electron
 *.njsproj
 *.sln
 *.sw?
+
+#python ignores
+backend/__pycache__/
+backend/measureApiVenv/
+backend/process.py

@@ -1,46 +1,46 @@
-# GUI - SMU: KEITHLEY 2401
+# GUI - SMU: KEITHLEY 2401  
 
-Interface do obsługi, odczytu oraz zapisu pomiarów z jednostki SMU.
+An interface for operating, reading, and recording measurements from the SMU unit.  
 
-![taskbar-alpha1 1](https://github.com/user-attachments/assets/b8776dc2-0aab-4577-833c-a7bc6a52d970)
+![taskbar-alpha1 1](https://github.com/user-attachments/assets/b8776dc2-0aab-4577-833c-a7bc6a52d970)  
 
-## Narzędzia deweloperskie / technologie
+## Development Tools / Technologies  
 
-**Narzędzia potrzebe do rozwijania frontendu:**
-- Dla uproszczenia pracy, dobrze korzystać z terminala **Git Bash**, <ins>zamiast powershella<ins/>
-- [NodeJS](https://nodejs.org/en)
-    - dobrze pobrać też narzędzie [npm-run-all](https://www.npmjs.com/package/npm-run-all)
-- [TypeScript](https://www.npmjs.com/package/typescript)
-- electron-builder
+**Tools required for frontend development:**  
+- For ease of use, it's recommended to use **Git Bash** <ins>instead of PowerShell<ins/>  
+- [NodeJS](https://nodejs.org/en)  
+    - It is also recommended to install [npm-run-all](https://www.npmjs.com/package/npm-run-all)  
+- [TypeScript](https://www.npmjs.com/package/typescript)  
+- electron-builder  
 ```
 npm i --save-dev electron-builder
 ```
 
-**Technologie:**
-- Electron
-- Vite
-- React
+**Technologies:**  
+- Electron  
+- Vite  
+- React  
 
-## Praca przy aplikacji
+## Working on the Application  
 
-1. **Build**
+1. **Build**  
 ```
 npm run build
 ```
-2. **Otworzenie aplikacji w trybie deweloperskim** (skonfigurowany jest local server Vite, więc zmiany wprowadzane w projekcie widoczne są od razu w trybie deweloperskim, bez konieczności odświeżania)
+2. **Running the application in developer mode** (A Vite local server is configured, so changes made to the project are immediately visible in developer mode without the need for refreshing)  
 ```
 npm run dev
 ```
-3. **Budowanie gotowej aplikacji** (na windowsie potrzebne będzie otworzenie Git Basha, lub w przypadku korzystania z konsoli w edytorze, np. VS Code samego edytora, w trybie administratora)
-- Dla Windowsa
+3. **Building the final application** (On Windows, you may need to open Git Bash or, if using a console within an editor such as VS Code, run the editor in administrator mode)  
+- For Windows  
 ```
 npm run dist:win
 ```
-- Dla Mac
+- For Mac  
 ```
 npm run dist:mac
 ```
-- Dla Linuxa
+- For Linux  
 ```
 npm run dist:linux
 ```
