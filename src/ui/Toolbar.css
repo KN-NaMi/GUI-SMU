@@ -1,17 +1,7 @@
-.toolbar-container {
-  width: 100vw;
-  max-width: 100vw;
-  height: 100vh;
-  display: flex;
-  justify-content: flex-start;
-  align-items: flex-start;
-  overflow: hidden;
-  box-sizing: border-box;
-}
-
 .toolbar {
-  width: 100vw;
-  height: 175px;
+
+  height: 27vh;
+  min-height: 175px;
   background-color: #191919;
   display: grid;
   grid-template-columns: 140px 305px 148px 1fr;
@@ -24,7 +14,7 @@
 
 .toolbar > * {
   max-height: 100%;
-  overflow: auto;
+  overflow: hidden;
   flex: 1;
 }
 

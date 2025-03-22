@@ -1,4 +1,4 @@
-// import React, { useState } from "react";
+// import React, { useEffect, useState } from "react";
 import Toolbar from "./Toolbar";
 // import ScatterChartComponent from "./ScatterChart";
 import './App.css'
@@ -7,6 +7,7 @@ const App: React.FC = () => {
 
     // const [xScale, setXScale] = useState<"linear" | "log">("linear");
     // const [yScale, setYScale] = useState<"linear" | "log">("linear");
+    
 
     return (
         <div className="app-container">
