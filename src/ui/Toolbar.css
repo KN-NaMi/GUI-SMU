@@ -10,6 +10,7 @@
   padding: 0 20px;
   box-sizing: border-box;
   transform-origin: top left;
+  transform-origin: top left;
 }
 
 .toolbar > * {
