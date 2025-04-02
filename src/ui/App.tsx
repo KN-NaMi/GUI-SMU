@@ -1,20 +1,26 @@
-// import React, { useEffect, useState } from "react";
 import Toolbar from "./Toolbar";
-// import ScatterChartComponent from "./ScatterChart";
 import './App.css'
+import ScatterChart from "./ScatterChart";
+import { useState } from "react";
 
 const App: React.FC = () => {
 
-    // const [xScale, setXScale] = useState<"linear" | "log">("linear");
-    // const [yScale, setYScale] = useState<"linear" | "log">("linear");
+    const [xScaleType, setXScaleType] = useState<"linear" | "log">("linear");
+    const [yScaleType, setYScaleType] = useState<"linear" | "log">("linear");
     
-
     return (
         <div className="app-container">
-            {/* setXScale={setXScale} setYScale={setYScale}  to ma  być w toolbarze na dole*/}
-            <Toolbar />
+            <Toolbar 
+                xScaleType={xScaleType}
+                yScaleType={yScaleType}
+                setXScaleType={setXScaleType}
+                setYScaleType={setYScaleType}
+            />
             <div className="chart-container">
-                {/* <ScatterChartComponent xScale={xScale} yScale={yScale}/> */}
+                <ScatterChart 
+                    xScaleType={xScaleType}
+                    yScaleType={yScaleType}
+                />
             </div>
         </div>
     );

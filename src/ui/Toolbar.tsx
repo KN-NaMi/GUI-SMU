@@ -1,32 +1,22 @@
+import { useScale } from '../electron/useScale';
 import './Toolbar.css'
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 
-// interface ToolbarProps {
-//   setXScale: (scale: "linear" | "log") => void;
-//   setYScale: (scale: "linear" | "log") => void;
-// }
-// { setXScale, setYScale } to będzie w toolbarze jako argumenty
-//: React.FC<ToolbarProps> to jest typ funkcji toolbar
+interface ToolbarProps {
+  xScaleType: "linear" | "log";
+  yScaleType: "linear" | "log";
+  setXScaleType: (type: "linear" | "log") => void;
+  setYScaleType: (type: "linear" | "log") => void;
+}
 
-const Toolbar = () => {
+const Toolbar: React.FC<ToolbarProps> = ({
+  xScaleType, 
+  yScaleType, 
+  setXScaleType, 
+  setYScaleType 
+}) => {
 
-  const [scale, setScale] = useState(1);
-
-  const baseWidth = 1920;
-
-    const updateScale = () => {
-        
-        const availableWidth = window.innerWidth;
-
-        const newScale = Math.max(availableWidth/baseWidth, 0.5);
-        setScale(newScale);
-    };
-
-    useEffect(() => {
-        window.addEventListener('resize', updateScale);
-        updateScale();
-        return () => window.removeEventListener('resize', updateScale);
-    }, []);
+  const scale = useScale();
 
   const [sourceType, setSourceType] = useState<string>("voltage-src");
   const [measuredValueX, setMeasuredValueX] = useState<string>("I");
@@ -43,12 +33,15 @@ const Toolbar = () => {
     setMeasuredValueY(newValue);
     setMeasuredValueX(newValue === "I" ? "U" : "I");
   }
+
+  
   
   return (
     <div className='toolbar' 
     style={{
       transform: `scale(${scale})`,
       width: `${100/scale}%`,
+      height: `${100/175}%`,
     }}
     >
       
@@ -166,7 +159,8 @@ const Toolbar = () => {
                 <select 
                 name="axis-type" 
                 id="x-type-select"
-                // onChange={(e) => setXScale(e.target.value as "linear" | "log")}
+                value={xScaleType}
+                onChange={(e) => setXScaleType(e.target.value as "linear" | "log")}
                 >
                   <option value="linear">Liniowa</option>
                   <option value="log">Logarytmiczna</option>
@@ -213,7 +207,8 @@ const Toolbar = () => {
                 <select 
                 name="axis-type" 
                 id="y-type-select"
-                // onChange={(e) => setYScale(e.target.value as "linear" | "log")}
+                value={yScaleType}
+                onChange={(e) => setYScaleType(e.target.value as "linear" | "log")}
                 >
                   <option value="linear">Liniowa</option>
                   <option value="log">Logarytmiczna</option>
