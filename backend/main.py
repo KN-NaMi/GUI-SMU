@@ -88,6 +88,13 @@ class ConnectionManager:
 
 
 class MeasureProcedure(Procedure):
+    
+    voltage_ranges = [.2, 2, 20]
+    current_ranges = [.000001, .00001, .0001, .001, .01, .1, 1]
+
+    def nearest_largest_value (self, n, values):
+        return min([v for v in values if v >= n] or [None])
+
 
     id = IntegerParameter('Process id', default=999)
     iterations = IntegerParameter('Loop Iterations', default=100)
@@ -95,7 +102,6 @@ class MeasureProcedure(Procedure):
     port = Parameter("port", "")
     DATA_COLUMNS = ['Voltage', 'Current']
     progress = FloatParameter('Progress %', units='%', default=0.0)
-    full_results = []
     source_type = Parameter("source type", default="VOLT")
    
     #voltage parameters
@@ -103,38 +109,59 @@ class MeasureProcedure(Procedure):
     voltage_min = FloatParameter('From voltage', units='V', default=0)
     voltage_max = FloatParameter('To voltage', units='V', default=20)
     
+    #current parameters
+    compliance_voltage = FloatParameter('compliance voltage', units='V', default=5)
+    current_min = FloatParameter('From current', units='A', default=0)
+    current_max = FloatParameter('To current', units='A', default=0.02)
+    
     def startup(self):
+        manager.add_queue("starting setup")
         log.info("Setting up connection to SMU")
         self.meter = Keithley2400(self.port)
         log.info("Setting up parameters")
         if self.source_type == "VOLT":
-            self.meter.apply_voltage()              
-            self.meter.source_voltage_range = 2   
+            self.meter.apply_voltage()  
+            self.meter.measure_current()            
+            self.meter.source_voltage_range =  self.nearest_largest_value(self.voltage_max, self.voltage_ranges)  
             self.meter.compliance_current = self.compliance_current
-            voltages = np.linspace(self.voltage_min, self.voltage_max, self.iterations)
-            #voltages = np.arange(0, 0.5, 0.01)
-            voltages = [float(x) for x in voltages]
-        
-        self.data = []
+            self.voltages = np.linspace(self.voltage_min, self.voltage_max, self.iterations)
+            print(self.voltages)
+            self.voltages = [float(x) for x in self.voltages]
+            print(self.voltages)
+            self.meter.enable_source()
+            manager.add_queue("setup completed")
+        elif self.source_type == "CURR":
+            pass
+        else:
+            manager.add_queue("Pass correct parameters and try again")
         
     def execute(self):
-        log.info("Starting to measure")
-        for i in range(self.iterations):
-            data = ReturnWebSocket(step=i, current=random.random(), voltage=random.random())
-            manager.add_queue(data.model_dump_json())
-            log.debug("Produced numbers: %s" % data.model_dump())
-            self.progress = 100. * i / self.iterations
-            self.emit('results', data.model_dump())
-            self.emit('progress', self.progress)
-            sleep(self.delay)
-            self.full_results.append(data.model_dump())
-            if self.should_stop():
-                log.warning("Catch stop command in procedure")
-                break
+        
+        if self.source_type == "VOLT":
+            log.info("Starting to measure in VOLT mode")
+            for v, voltage in enumerate(self.voltages):
+                
+                self.meter.source_voltage = voltage
+                data = ReturnWebSocket(step=v, current=self.meter.current, voltage=voltage)
+                manager.add_queue(data.model_dump_json())
+                self.progress = 100. * v / self.iterations
+                self.emit('results', data.model_dump())
+                self.emit('progress', self.progress)
+                if self.should_stop():
+                    log.warning("Catch stop command in procedure")
+                    break
+        elif self.source_type == "CURR":
+            pass
+        else:
+            manager.add_queue("Pass correct parameters and try again")
+            
 
     def shutdown(self):
+        self.meter.shutdown()
+        self.meter.adapter.close()
         manager.add_queue("Finished")
         log.info("Finished")
+        
 
 class MeasureTestWebSocket(Procedure):
 
@@ -241,12 +268,19 @@ def start_job(command: DataCommand, id: int):
     filename = tempfile.mktemp()
     log.info("Using data file: %s" % filename)
     #start measuring procedure
-    if command.isVoltSrc:
-        procedure = MeasureProcedure(port=f"ASRL{command.port}::INSTR", id=id, source_type="VOLT")
-    else:
-        procedure = MeasureProcedure(port=f"ASRL{command.port}::INSTR", id=id, source_type="CURR")
+    procedure = MeasureProcedure(port=f"ASRL{command.port}::INSTR", id=id)
+    procedure.source_type= "VOLT" if command.isVoltSrc else "CURR"
     procedure.iterations = command.iterations
     procedure.delay = 0.1
+    print(procedure.port)
+    #voltage measure parametres
+    procedure.compliance_current = command.currLimit
+    procedure.voltage_min = command.uMin
+    procedure.voltage_max = command.uMax
+    #current measure paramters
+    procedure.compliance_voltage = command.voltLimit
+    procedure.current_min = command.iMin
+    procedure.current_max = command.iMax
     log.info(f"Set up Procedure with {procedure.iterations} iterations")
     
     results = Results(procedure, filename)
