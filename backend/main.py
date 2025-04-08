@@ -157,6 +157,9 @@ class MeasureProcedure(Procedure):
             
 
     def shutdown(self):
+        self.meter.beep(3600, 1)
+        time.sleep(0.2)
+        self.meter.beep(3600, 0.5)
         self.meter.shutdown()
         self.meter.adapter.close()
         manager.add_queue("Finished")
