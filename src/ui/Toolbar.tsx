@@ -1,17 +1,48 @@
+import { useScale } from '../electron/useScale';
 import './Toolbar.css'
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 
-// interface ToolbarProps {
-//   setXScale: (scale: "linear" | "log") => void;
-//   setYScale: (scale: "linear" | "log") => void;
-// }
-// { setXScale, setYScale } to będzie w toolbarze jako argumenty
-//: React.FC<ToolbarProps> to jest typ funkcji toolbar
-const Toolbar = () => {
+interface ToolbarProps {
+  xScaleType: "linear" | "log";
+  yScaleType: "linear" | "log";
+  setXScaleType: (type: "linear" | "log") => void;
+  setYScaleType: (type: "linear" | "log") => void;
+  connect: () => Promise<boolean>;
+  isConnected: boolean;
+  setIsConnected: (value: boolean) => void;
+  isMeasuring: boolean;
+  setIsMeasuring: (value: boolean) => void;
+  startMeasurement: (iterations: number, port: string, config?: any) => boolean;
+  stopMeasurement: () => void;
+  disconnect?: () => void;
+}
 
+const Toolbar = ({
+  xScaleType, 
+  yScaleType, 
+  setXScaleType, 
+  setYScaleType,
+  connect,
+  isConnected,
+  isMeasuring,
+  startMeasurement,
+  stopMeasurement
+}: ToolbarProps) => {
+  const scale = useScale();
+
+  // Basic measurement configuration states
   const [sourceType, setSourceType] = useState<string>("voltage-src");
   const [measuredValueX, setMeasuredValueX] = useState<string>("I");
   const [measuredValueY, setMeasuredValueY] = useState<string>("U");
+  const [iterations, setIterations] = useState<number>(10);
+
+   // Form field states for measurement parameters
+  const [currentLimit, setCurrentLimit] = useState<string>("0.03");
+  const [voltageMax, setVoltageMax] = useState<string>("20"); 
+  const [voltageMin, setVoltageMin] = useState<string>("0");
+  const [voltageLimit, setVoltageLimit] = useState<string>("5");
+  const [currentMax, setCurrentMax] = useState<string>("0.02");
+  const [currentMin, setCurrentMin] = useState<string>("0");
 
   const handleChangeX = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newValue = e.target.value;
@@ -24,110 +55,211 @@ const Toolbar = () => {
     setMeasuredValueY(newValue);
     setMeasuredValueX(newValue === "I" ? "U" : "I");
   }
-  
-  return (
-    <div className='toolbar'>
+
+  const handleIterationsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value);
+    if (!isNaN(value) && value > 0) {
+      setIterations(value);
+    }
+  };
+
+  // Function to start measurement
+  const handleStart = useCallback(async () => {
+    if (isMeasuring) return;
+    
+    try {
+      if (!isConnected) {
+        const connected = await connect();
+        if (!connected) {
+          return;
+        }
+      }
+
+      const isVoltSrc = sourceType === "voltage-src";
+
+      const config = {
+        isVoltSrc,
+        iterations,
+        ...(isVoltSrc 
+          ? {
+              currLimit: parseFloat(currentLimit),
+              uMax: parseFloat(voltageMax),
+              uMin: parseFloat(voltageMin)
+            } 
+          : {
+              voltLimit: parseFloat(voltageLimit),
+              iMax: parseFloat(currentMax),
+              iMin: parseFloat(currentMin)
+            })
+      };
       
+      setTimeout(() => {
+        startMeasurement(iterations, '7', config);
+      }, 50);
+    } catch (error) {
+      console.error('Error connecting or starting measurement:', error);
+    }
+  }, [isMeasuring, isConnected, iterations, sourceType, currentLimit, voltageMax, voltageMin, voltageLimit, currentMax, currentMin, connect, startMeasurement]);
+  
+  // Function to stop measurement
+  const handleStop = useCallback(() => {
+    if (!isConnected) return;
+    stopMeasurement();
+  }, [isConnected, stopMeasurement]);
+
+
+
+  return (
+    <div className='toolbar' 
+    style={{
+      transform: `scale(${scale})`,
+      width: `${100/scale}%`,
+      height: `${100/175}%`,
+    }}
+    >
       <div className='first-column'>
         <div className='start-stop-buttons'>
           {/* start and stop buttons */}
-          <button className='start-btn'>
+          <button 
+            className='start-btn'
+            onClick={handleStart}
+            disabled={isMeasuring}          
+          >
             <img src="/play.png" alt="play-icon" />
           </button>
 
-          <button className='stop-btn'>
+          <button 
+            className='stop-btn'
+            onClick={handleStop}
+            disabled={!isConnected}
+          >
             <img src="/stop.png" alt="stop-icon" />
           </button>
 
+          </div>
+
+          <div className='input-label-corelation'>
+            <label htmlFor="current-voltage-src">Typ źródła</label>
+            <select 
+              id="current-voltage-src"
+              value={sourceType}
+              onChange={(e) => setSourceType(e.target.value)}
+            >
+              <option value="voltage-src">Źródło napięciowe</option>
+              <option value="current-src">Źródło prądowe</option>
+            </select>
+          </div>
         </div>
 
-        <div className='input-label-corelation'>
-          <label htmlFor="current-voltage-src">Typ źródła</label>
-          <select 
-            id="current-voltage-src"
-            value={sourceType}
-            onChange={(e) => setSourceType(e.target.value)}
-          >
-            <option value="voltage-src">Źródło napięciowe</option>
-            <option value="current-src">Źródło prądowe</option>
-          </select>
-        </div>
-      </div>
-
-      <div className='input-container'>
-        {sourceType === "voltage-src" && (
-          <>
-            {/* Voltage source options*/}
-            <div className='input-label-corelation nw'>
-              <label htmlFor="current-limiter">Ograniczenie prądowe</label>
-              <div>
-                <input type="text" id='current-limiter' />
-                <select name="units" id="current-limiter-units">
-                  <option value="μA">μA</option>
-                  <option value="mA">mA</option>
-                  <option value="A">A</option>
-                  <option value="kA">kA</option>
-                </select>
+        <div className='input-container'>
+          {sourceType === "voltage-src" && (
+            <>
+              {/* Voltage source options*/}
+              <div className='input-label-corelation nw'>
+                <label htmlFor="current-limiter">Ograniczenie prądowe</label>
+                <div>
+                  <input
+                    type="text" 
+                    id='current-limiter' 
+                    value={currentLimit}
+                    onChange={(e) => setCurrentLimit(e.target.value)}
+                  />
+                  <select name="units" id="current-limiter-units">
+                    <option value="μA">μA</option>
+                    <option value="mA">mA</option>
+                    <option value="A">A</option>
+                    <option value="kA">kA</option>
+                  </select>
+                </div>
               </div>
-            </div>
 
-            <div className='input-label-corelation ne'>
-              <label htmlFor="U-max">U_max</label>
-              <input type="text" id='U-max'/>
-            </div>
-            
-            <div className='input-label-corelation se'>
-              <label htmlFor="U-min">U_min</label>
-              <input type="text" id='U-min'/>
-            </div>
-          </>
-        )}
-        {sourceType === "current-src" && (
-          <>
-            {/* Current source options */}
-            <div className='input-label-corelation nw'>
-              <label htmlFor="voltage-limiter">Ograniczenie napięciowe</label>
-              <div>
-                <input type="text" id='voltage-limiter' />
-                <select name="units" id="voltage-limiter-units">
-                  <option value="μV">μV</option>
-                  <option value="mV">mV</option>
-                  <option value="V">V</option>
-                  <option value="kV">kV</option>
-                </select>
+              <div className='input-label-corelation ne'>
+                <label htmlFor="U-max">U_max</label>
+                <input 
+                  type="text" 
+                  id='U-max'
+                  value={voltageMax}
+                  onChange={(e) => setVoltageMax(e.target.value)}
+                />
               </div>
-            </div>
+              
+              <div className='input-label-corelation se'>
+                <label htmlFor="U-min">U_min</label>
+                <input 
+                  type="text"
+                  id='U-min'
+                  value={voltageMin}
+                  onChange={(e) => setVoltageMin(e.target.value)}
+                />
+              </div>
+            </>
+          )}
+          {sourceType === "current-src" && (
+            <>
+              {/* Current source options */}
+              <div className='input-label-corelation nw'>
+                <label htmlFor="voltage-limiter">Ograniczenie napięciowe</label>
+                <div>
+                  <input 
+                    type="text" 
+                    id='voltage-limiter' 
+                    value={voltageLimit}
+                    onChange={(e) => setVoltageLimit(e.target.value)}
+                  />
+                  <select name="units" id="voltage-limiter-units">
+                    <option value="μV">μV</option>
+                    <option value="mV">mV</option>
+                    <option value="V">V</option>
+                    <option value="kV">kV</option>
+                  </select>
+                </div>
+              </div>
 
-            <div className='input-label-corelation ne'>
-              <label htmlFor="I-max">I_max</label>
-              <input type="text" id='I-max'/>
-            </div>
+              <div className='input-label-corelation ne'>
+                <label htmlFor="I-max">I_max</label>
+                <input
+                  type="text"
+                  id='I-max'
+                  value={currentMax}
+                  onChange={(e) => setCurrentMax(e.target.value)}
+                />
+              </div>
 
-            <div className='input-label-corelation se'>
-              <label htmlFor="I-min">I_min</label>
-              <input type="text" id='I-min'/>
-            </div>
-          </>
-        )}
-            <div className='input-label-corelation sw'>
-              <label htmlFor="how-many-measurements">Ilość punktów pomiarowych</label>
-              <input type="text" id='how-many-measurements'/>
-            </div>
-        
-      </div>
-
-      {/* Presets */}
-      <fieldset className='presets'>
-        <legend>Presety</legend>
-        <button className='save-preset-btn'>Zapisz preset</button>
-        <button className='load-preset-btn'>Wczytaj preset</button>
-        <div className='input-label-corelation'>
-          <label htmlFor="choose-presets">Presety</label>
-          <select name="choose-presets" id="choose-presets">
-
-          </select>
+              <div className='input-label-corelation se'>
+                <label htmlFor="I-min">I_min</label>
+                <input 
+                  type="text" 
+                  id='I-min'
+                  value={currentMin}
+                  onChange={(e) => setCurrentMin(e.target.value)}
+                />
+              </div>
+            </>
+          )}
+              <div className='input-label-corelation sw'>
+                <label htmlFor="how-many-measurements">Ilość punktów pomiarowych</label>
+                <input 
+                  type="text" 
+                  id='how-many-measurements'
+                  value={iterations}
+                  onChange={handleIterationsChange}
+                />
+              </div>
+          
         </div>
-      </fieldset>
+
+        {/* Presets */}
+        <fieldset className='presets'>
+          <legend>Presety</legend>
+          <button className='save-preset-btn'>Zapisz preset</button>
+          <button className='load-preset-btn'>Wczytaj preset</button>
+          <div className='input-label-corelation'>
+            <label htmlFor="choose-presets">Presety</label>
+            <select name="choose-presets" id="choose-presets">
+
+            </select>
+          </div>
+        </fieldset>
 
       {/* Graph options */}
       <fieldset className='graph-options'>
@@ -142,7 +274,8 @@ const Toolbar = () => {
                 <select 
                 name="axis-type" 
                 id="x-type-select"
-                // onChange={(e) => setXScale(e.target.value as "linear" | "log")}
+                value={xScaleType}
+                onChange={(e) => setXScaleType(e.target.value as "linear" | "log")}
                 >
                   <option value="linear">Liniowa</option>
                   <option value="log">Logarytmiczna</option>
@@ -189,7 +322,8 @@ const Toolbar = () => {
                 <select 
                 name="axis-type" 
                 id="y-type-select"
-                // onChange={(e) => setYScale(e.target.value as "linear" | "log")}
+                value={yScaleType}
+                onChange={(e) => setYScaleType(e.target.value as "linear" | "log")}
                 >
                   <option value="linear">Liniowa</option>
                   <option value="log">Logarytmiczna</option>
@@ -241,7 +375,6 @@ const Toolbar = () => {
           </fieldset>
         </div>
       </fieldset>
-
     </div>
   );
 };
