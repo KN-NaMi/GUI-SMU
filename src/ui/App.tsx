@@ -70,7 +70,7 @@ const App: React.FC = () => {
         setIsMeasuring(true);
     
         const measurementConfig = {
-            command: 'start',
+            command: 'test',
             port: port,
             iterations: iterations,
             isVoltSrc: config?.isVoltSrc ?? true,
