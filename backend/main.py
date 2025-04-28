@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Response, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from pydantic_core import from_json
 from typing import Optional
 from time import sleep
@@ -8,7 +8,7 @@ import random, tempfile, threading, time, asyncio
 import numpy as np
 
 from pymeasure.log import console_log
-from pymeasure.experiment import Procedure, IntegerParameter, Parameter, FloatParameter
+from pymeasure.experiment import Procedure, IntegerParameter, Parameter, FloatParameter, ListParameter
 from pymeasure.experiment import Results, Worker
 from pymeasure.instruments.keithley import Keithley2400
 
@@ -29,6 +29,20 @@ class DataCommand(BaseModel):
     uMax: Optional[float] = None
     uMin: Optional[float] = None
     iterations: Optional[int] = None
+    
+class TestDataCommand(BaseModel):
+    command: Optional[str] = None
+    port: str
+    timeout: Optional[int] = 20 #minutes
+    isVoltSrc: Optional[bool] = True
+    voltLimit: Optional[float] = None
+    currLimit: Optional[float] = None
+    iMax: Optional[float] = None
+    iMin: Optional[float] = None
+    uMax: Optional[float] = None
+    uMin: Optional[float] = None
+    iterations: Optional[int] = None
+    test_values: list = [[1,2],[2,4]]
     
 class ReturnAPI(BaseModel):
     is_started: bool
@@ -131,7 +145,16 @@ class MeasureProcedure(Procedure):
             self.meter.enable_source()
             manager.add_queue("setup completed")
         elif self.source_type == "CURR":
-            pass
+            self.meter.apply_current()  
+            self.meter.measure_voltage()            
+            self.meter.source_current_range =  self.nearest_largest_value(self.current_max, self.current_ranges)  
+            self.meter.compliance_voltage = self.compliance_voltage
+            self.currents = np.linspace(self.current_min, self.current_max, self.iterations)
+            print(self.currents)
+            self.currents = [float(x) for x in self.currents]
+            print(self.currents)
+            self.meter.enable_source()
+            manager.add_queue("setup completed")
         else:
             manager.add_queue("Pass correct parameters and try again")
         
@@ -151,7 +174,18 @@ class MeasureProcedure(Procedure):
                     log.warning("Catch stop command in procedure")
                     break
         elif self.source_type == "CURR":
-            pass
+            log.info("Starting to measure in CURR mode")
+            for c, current in enumerate(self.currents):
+                
+                self.meter.source_current = current
+                data = ReturnWebSocket(step=c, current=self.meter.current, voltage=voltage)
+                manager.add_queue(data.model_dump_json())
+                self.progress = 100. * c / self.iterations
+                self.emit('results', data.model_dump())
+                self.emit('progress', self.progress)
+                if self.should_stop():
+                    log.warning("Catch stop command in procedure")
+                    break
         else:
             manager.add_queue("Pass correct parameters and try again")
             
@@ -175,6 +209,7 @@ class MeasureTestWebSocket(Procedure):
     DATA_COLUMNS = ['Voltage', 'Current']
     progress = FloatParameter('Progress %', units='%', default=0.0)
     full_results = []
+    test_data = []
 
     def startup(self):
         self.data = []
@@ -182,8 +217,9 @@ class MeasureTestWebSocket(Procedure):
         
     def execute(self):
         log.info("Starting to measure")
-        for i in range(self.iterations):
-            data = ReturnWebSocket(step=i, current=random.random(), voltage=random.random())
+        max_steps = min(self.iterations, len(self.test_data))
+        for i, (voltage, current) in enumerate(self.test_data[:max_steps]):
+            data = ReturnWebSocket(step=i, current=current, voltage=voltage)
             manager.add_queue(data.model_dump_json())
             log.debug("Produced numbers: %s" % data.model_dump())
             self.progress = 100. * i / self.iterations
@@ -243,7 +279,14 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             packet = await websocket.receive_text()
             print(packet)
-            data = DataCommand.model_validate_json(packet)
+            try:
+                data = TestDataCommand.model_validate_json(packet)
+            except ValidationError:
+                try:
+                    data = DataCommand.model_validate_json(packet)
+                except ValidationError:
+                    print("Validation error")
+                    
             print(data)
             print(data.command)
             if data.command == "start":
@@ -276,14 +319,16 @@ def start_job(command: DataCommand, id: int):
     procedure.iterations = command.iterations
     procedure.delay = 0.1
     print(procedure.port)
-    #voltage measure parametres
-    procedure.compliance_current = command.currLimit
-    procedure.voltage_min = command.uMin
-    procedure.voltage_max = command.uMax
-    #current measure paramters
-    procedure.compliance_voltage = command.voltLimit
-    procedure.current_min = command.iMin
-    procedure.current_max = command.iMax
+    if command.isVoltSrc:
+        #voltage measure parametres
+        procedure.compliance_current = command.currLimit
+        procedure.voltage_min = command.uMin
+        procedure.voltage_max = command.uMax
+    else:
+        #current measure paramters
+        procedure.compliance_voltage = command.voltLimit
+        procedure.current_min = command.iMin
+        procedure.current_max = command.iMax
     log.info(f"Set up Procedure with {procedure.iterations} iterations")
     
     results = Results(procedure, filename)
@@ -305,7 +350,7 @@ def start_job(command: DataCommand, id: int):
     scribe.stop()
     
     
-def test_job(command: DataCommand, id: int):
+def test_job(command: TestDataCommand, id: int):
     global procedure
     scribe = console_log(log, level=logging.DEBUG)
     scribe.start()
@@ -316,6 +361,7 @@ def test_job(command: DataCommand, id: int):
     procedure = MeasureTestWebSocket(port=f"ASRL{command.port}::INSTR", id=id, source_type="CURR")
     procedure.iterations = command.iterations
     procedure.delay = 0.1
+    procedure.test_data = command.test_values
     log.info(f"Set up Procedure with {procedure.iterations} iterations")
     
     results = Results(procedure, filename)
