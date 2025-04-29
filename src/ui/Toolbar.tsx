@@ -17,6 +17,34 @@ interface ToolbarProps {
   disconnect?: () => void;
 }
 
+// Function to convert value based on selected unit
+const convertValue = (value: string, elementId: string): number => {
+  const numValue = parseFloat(value);
+  if (isNaN(numValue)) return 0;
+  
+  const selectElement = document.getElementById(elementId) as HTMLSelectElement;
+  if (!selectElement) return numValue;
+  
+  const unit = selectElement.value;
+  
+  switch(unit) {
+    case "μA":
+    case "μV":
+      return numValue * 0.000001;
+    case "mA":
+    case "mV":
+      return numValue * 0.001;
+    case "A":
+    case "V":
+      return numValue;
+    case "kA":
+    case "kV":
+      return numValue * 1000;
+    default:
+      return numValue;
+  }
+};
+
 const Toolbar = ({
   xScaleType, 
   yScaleType, 
@@ -35,13 +63,14 @@ const Toolbar = ({
   const [measuredValueX, setMeasuredValueX] = useState<string>("I");
   const [measuredValueY, setMeasuredValueY] = useState<string>("U");
   const [iterations, setIterations] = useState<number>(10);
+  const [port, setPort] = useState<string>("7");
 
    // Form field states for measurement parameters
-  const [currentLimit, setCurrentLimit] = useState<string>("0.03");
+  const [currentLimit, setCurrentLimit] = useState<string>("3");
   const [voltageMax, setVoltageMax] = useState<string>("20"); 
   const [voltageMin, setVoltageMin] = useState<string>("0");
   const [voltageLimit, setVoltageLimit] = useState<string>("5");
-  const [currentMax, setCurrentMax] = useState<string>("0.02");
+  const [currentMax, setCurrentMax] = useState<string>("2");
   const [currentMin, setCurrentMin] = useState<string>("0");
 
   const handleChangeX = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -82,19 +111,21 @@ const Toolbar = ({
         iterations,
         ...(isVoltSrc 
           ? {
-              currLimit: parseFloat(currentLimit),
+              currLimit: convertValue(currentLimit, "current-limiter-units"),
               uMax: parseFloat(voltageMax),
               uMin: parseFloat(voltageMin)
             } 
           : {
-              voltLimit: parseFloat(voltageLimit),
+              voltLimit: convertValue(voltageLimit, "voltage-limiter-units"),
               iMax: parseFloat(currentMax),
               iMin: parseFloat(currentMin)
             })
       };
+
+      console.log("Measurement config with converted limits:", config);
       
       setTimeout(() => {
-        startMeasurement(iterations, '7', config);
+        startMeasurement(iterations, port, config);
       }, 50);
     } catch (error) {
       console.error('Error connecting or starting measurement:', error);
@@ -372,6 +403,16 @@ const Toolbar = ({
           </fieldset>
           <fieldset className='series'>
             <legend>Serie</legend>
+            <div className='input-label-corelation' style={{ marginTop: '5px' }}>
+                <label htmlFor="port-input">PORT:</label>
+                <input 
+                  type="text" 
+                  id='port-input'
+                  value={port}
+                  onChange={(e) => setPort(e.target.value)}
+                  style={{ width: '20px', textAlign: 'center' }}
+                />
+              </div>
           </fieldset>
         </div>
       </fieldset>
