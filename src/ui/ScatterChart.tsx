@@ -3,9 +3,10 @@ import { useEffect, useRef } from "react";
 import { useScale } from '../electron/useScale';
 import "./ScatterChart.css";
 
-interface DataPoint {
-  x: number;
-  y: number;
+export interface DataPoint {
+  step: number;
+  current: number;
+  voltage: number;
 }
 
 interface ScatterChartProps {
@@ -15,27 +16,7 @@ interface ScatterChartProps {
 }
 
 const ScatterChart = ({ 
-  data = [
-    { x: -6000, y: -1000},
-    { x: -100, y: -200},
-    { x: -10, y: -20},
-    { x: 8, y: 4.5},
-    { x: 10, y: 20 },
-    { x: 200, y: 400 },
-    { x: 538.912, y: 412.32145},
-    { x: 3000, y: 500 },
-    { x: 40000, y: 8000},
-    { x: 1000000, y: 100000 },
-    { x: -10, y: -20},
-    // { x: -60, y: -20 },
-    // { x: -50, y: 20 },
-    // { x: -10, y: 0 },
-    // { x: 10, y: 20 },
-    // { x: 20, y: 40 },
-    // { x: 30, y: 50 },
-    // { x: 40, y: 80},
-    // { x: 50, y: 100 },
-  ],
+  data = [],
   xScaleType = "linear",
   yScaleType = "linear" 
 }: ScatterChartProps) => {
@@ -45,6 +26,7 @@ const ScatterChart = ({
 
   useEffect(() => {
     if (!svgRef.current) return;
+    const chartData = data.length > 0 ? data : [];
   
     const width = 1900 * scale;
     const height = 790 * scale;
@@ -143,9 +125,27 @@ const ScatterChart = ({
       return roundedExp % 1 === 0 ? `10^${roundedExp}` : "";
     };
 
+    const getMinMax = (data: DataPoint[], accessor: (d: DataPoint) => number): [number, number] => {
+      if (data.length === 0) {
+        return [-10, 10];
+      }
+      
+      const values = data.map(accessor);
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      
+      const padding = (max - min) * 0.1;
+      
+      if (min === max) {
+        return [min - 1, max + 1];
+      }
+      
+      return [min - padding, max + padding];
+    };
+
     // Creating scales
-    const xDomain = [d3.min(data, d => d.x) || -1, d3.max(data, d => d.x) || 1] as [number, number];
-    const yDomain = [d3.min(data, d => d.y) || -1, d3.max(data, d => d.y) || 1] as [number, number];
+    const xDomain = getMinMax(chartData, d => d.voltage);
+    const yDomain = getMinMax(chartData, d => d.current);
 
     const xScale = createScale(xScaleType, xDomain, [margin.left, width - margin.right]);
     const yScale = createScale(yScaleType, yDomain, [height - margin.bottom, margin.top]);
@@ -222,7 +222,7 @@ const ScatterChart = ({
 
     // Drawing Axes
     const drawAxes = () => {
-      // X Axis
+      // Oś X
       svg.append("g")
       .attr("transform", `translate(0,${height - margin.bottom})`)
       .call(
@@ -233,7 +233,7 @@ const ScatterChart = ({
       .selectAll("text")
       .attr("font-size", `${12 * scale}px`);
 
-      // Y Axis
+      // Oś Y
       svg.append("g")
       .attr("transform", `translate(${margin.left},0)`)
       .call(
@@ -243,18 +243,46 @@ const ScatterChart = ({
       )
       .selectAll("text")
       .attr("font-size", `${12 * scale}px`);
-    }
+    
+    svg.append("text")
+      .attr("x", width / 2)
+      .attr("y", height - 5)
+      .attr("text-anchor", "middle")
+      .attr("font-size", `${14 * scale}px`)
+      .text("Napięcie [V]");
+      
+    svg.append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("x", -height / 2)
+      .attr("y", 15)
+      .attr("text-anchor", "middle")
+      .attr("font-size", `${14 * scale}px`)
+      .text("Prąd [A]");
+    };
 
     // Drawing points
     const drawPoints = () => {
-      svg.append("g")
-        .selectAll("circle")
-        .data(data)
-        .enter().append("circle")
-        .attr("cx", d => xScale(d.x))
-        .attr("cy", d => yScale(d.y))
-        .attr("r", 5 * scale)
-        .attr("fill", "steelblue");
+      if (chartData.length > 0) {
+        svg.append("g")
+          .selectAll("circle")
+          .data(chartData)
+          .enter().append("circle")
+          .attr("cx", d => xScale(d.voltage))
+          .attr("cy", d => yScale(d.current))
+          .attr("r", 5 * scale)
+          .attr("fill", "steelblue");
+        
+        const line = d3.line<DataPoint>()
+          .x(d => xScale(d.voltage))
+          .y(d => yScale(d.current));
+        
+        svg.append("path")
+          .datum(chartData)
+          .attr("fill", "none")
+          .attr("stroke", "steelblue")
+          .attr("stroke-width", 2 * scale)
+          .attr("d", line);
+      }
     };
 
     drawGrid();

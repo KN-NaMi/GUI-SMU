@@ -1,26 +1,77 @@
 import { useScale } from '../electron/useScale';
 import './Toolbar.css'
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 
 interface ToolbarProps {
   xScaleType: "linear" | "log";
   yScaleType: "linear" | "log";
   setXScaleType: (type: "linear" | "log") => void;
   setYScaleType: (type: "linear" | "log") => void;
+  connect: () => Promise<boolean>;
+  isConnected: boolean;
+  setIsConnected: (value: boolean) => void;
+  isMeasuring: boolean;
+  setIsMeasuring: (value: boolean) => void;
+  startMeasurement: (iterations: number, port: string, config?: any) => boolean;
+  stopMeasurement: () => void;
+  disconnect?: () => void;
 }
 
-const Toolbar: React.FC<ToolbarProps> = ({
+// Function to convert value based on selected unit
+const convertValue = (value: string, elementId: string): number => {
+  const numValue = parseFloat(value);
+  if (isNaN(numValue)) return 0;
+  
+  const selectElement = document.getElementById(elementId) as HTMLSelectElement;
+  if (!selectElement) return numValue;
+  
+  const unit = selectElement.value;
+  
+  switch(unit) {
+    case "μA":
+    case "μV":
+      return numValue * 0.000001;
+    case "mA":
+    case "mV":
+      return numValue * 0.001;
+    case "A":
+    case "V":
+      return numValue;
+    case "kA":
+    case "kV":
+      return numValue * 1000;
+    default:
+      return numValue;
+  }
+};
+
+const Toolbar = ({
   xScaleType, 
   yScaleType, 
   setXScaleType, 
-  setYScaleType 
-}) => {
-
+  setYScaleType,
+  connect,
+  isConnected,
+  isMeasuring,
+  startMeasurement,
+  stopMeasurement
+}: ToolbarProps) => {
   const scale = useScale();
 
+  // Basic measurement configuration states
   const [sourceType, setSourceType] = useState<string>("voltage-src");
   const [measuredValueX, setMeasuredValueX] = useState<string>("I");
   const [measuredValueY, setMeasuredValueY] = useState<string>("U");
+  const [iterations, setIterations] = useState<number>(10);
+  const [port, setPort] = useState<string>("7");
+
+   // Form field states for measurement parameters
+  const [currentLimit, setCurrentLimit] = useState<string>("3");
+  const [voltageMax, setVoltageMax] = useState<string>("20"); 
+  const [voltageMin, setVoltageMin] = useState<string>("0");
+  const [voltageLimit, setVoltageLimit] = useState<string>("5");
+  const [currentMax, setCurrentMax] = useState<string>("2");
+  const [currentMin, setCurrentMin] = useState<string>("0");
 
   const handleChangeX = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newValue = e.target.value;
@@ -34,8 +85,61 @@ const Toolbar: React.FC<ToolbarProps> = ({
     setMeasuredValueX(newValue === "I" ? "U" : "I");
   }
 
+  const handleIterationsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value);
+    if (!isNaN(value) && value > 0) {
+      setIterations(value);
+    }
+  };
+
+  // Function to start measurement
+  const handleStart = useCallback(async () => {
+    if (isMeasuring) return;
+    
+    try {
+      if (!isConnected) {
+        const connected = await connect();
+        if (!connected) {
+          return;
+        }
+      }
+
+      const isVoltSrc = sourceType === "voltage-src";
+
+      const config = {
+        isVoltSrc,
+        iterations,
+        ...(isVoltSrc 
+          ? {
+              currLimit: convertValue(currentLimit, "current-limiter-units"),
+              uMax: parseFloat(voltageMax),
+              uMin: parseFloat(voltageMin)
+            } 
+          : {
+              voltLimit: convertValue(voltageLimit, "voltage-limiter-units"),
+              iMax: parseFloat(currentMax),
+              iMin: parseFloat(currentMin)
+            })
+      };
+
+      console.log("Measurement config with converted limits:", config);
+      
+      setTimeout(() => {
+        startMeasurement(iterations, port, config);
+      }, 50);
+    } catch (error) {
+      console.error('Error connecting or starting measurement:', error);
+    }
+  }, [isMeasuring, isConnected, iterations, sourceType, currentLimit, voltageMax, voltageMin, voltageLimit, currentMax, currentMin, connect, startMeasurement]);
   
-  
+  // Function to stop measurement
+  const handleStop = useCallback(() => {
+    if (!isConnected) return;
+    stopMeasurement();
+  }, [isConnected, stopMeasurement]);
+
+
+
   return (
     <div className='toolbar' 
     style={{
@@ -44,17 +148,24 @@ const Toolbar: React.FC<ToolbarProps> = ({
       height: `${100/175}%`,
     }}
     >
-      
       <div className='first-column'>
         <div className='start-stop-buttons'>
           {/* start and stop buttons */}
-          <button className='start-btn'>
+          <button 
+            className='start-btn'
+            onClick={handleStart}
+            disabled={isMeasuring}          
+          >
             <img src="/play.png" alt="play-icon" />
           </button>
 
-            <button className='stop-btn'>
-              <img src="/stop.png" alt="stop-icon" />
-            </button>
+          <button 
+            className='stop-btn'
+            onClick={handleStop}
+            disabled={!isConnected}
+          >
+            <img src="/stop.png" alt="stop-icon" />
+          </button>
 
           </div>
 
@@ -78,7 +189,12 @@ const Toolbar: React.FC<ToolbarProps> = ({
               <div className='input-label-corelation nw'>
                 <label htmlFor="current-limiter">Ograniczenie prądowe</label>
                 <div>
-                  <input type="text" id='current-limiter' />
+                  <input
+                    type="text" 
+                    id='current-limiter' 
+                    value={currentLimit}
+                    onChange={(e) => setCurrentLimit(e.target.value)}
+                  />
                   <select name="units" id="current-limiter-units">
                     <option value="μA">μA</option>
                     <option value="mA">mA</option>
@@ -90,12 +206,22 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
               <div className='input-label-corelation ne'>
                 <label htmlFor="U-max">U_max</label>
-                <input type="text" id='U-max'/>
+                <input 
+                  type="text" 
+                  id='U-max'
+                  value={voltageMax}
+                  onChange={(e) => setVoltageMax(e.target.value)}
+                />
               </div>
               
               <div className='input-label-corelation se'>
                 <label htmlFor="U-min">U_min</label>
-                <input type="text" id='U-min'/>
+                <input 
+                  type="text"
+                  id='U-min'
+                  value={voltageMin}
+                  onChange={(e) => setVoltageMin(e.target.value)}
+                />
               </div>
             </>
           )}
@@ -105,7 +231,12 @@ const Toolbar: React.FC<ToolbarProps> = ({
               <div className='input-label-corelation nw'>
                 <label htmlFor="voltage-limiter">Ograniczenie napięciowe</label>
                 <div>
-                  <input type="text" id='voltage-limiter' />
+                  <input 
+                    type="text" 
+                    id='voltage-limiter' 
+                    value={voltageLimit}
+                    onChange={(e) => setVoltageLimit(e.target.value)}
+                  />
                   <select name="units" id="voltage-limiter-units">
                     <option value="μV">μV</option>
                     <option value="mV">mV</option>
@@ -117,18 +248,33 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
               <div className='input-label-corelation ne'>
                 <label htmlFor="I-max">I_max</label>
-                <input type="text" id='I-max'/>
+                <input
+                  type="text"
+                  id='I-max'
+                  value={currentMax}
+                  onChange={(e) => setCurrentMax(e.target.value)}
+                />
               </div>
 
               <div className='input-label-corelation se'>
                 <label htmlFor="I-min">I_min</label>
-                <input type="text" id='I-min'/>
+                <input 
+                  type="text" 
+                  id='I-min'
+                  value={currentMin}
+                  onChange={(e) => setCurrentMin(e.target.value)}
+                />
               </div>
             </>
           )}
               <div className='input-label-corelation sw'>
                 <label htmlFor="how-many-measurements">Ilość punktów pomiarowych</label>
-                <input type="text" id='how-many-measurements'/>
+                <input 
+                  type="text" 
+                  id='how-many-measurements'
+                  value={iterations}
+                  onChange={handleIterationsChange}
+                />
               </div>
           
         </div>
@@ -257,6 +403,16 @@ const Toolbar: React.FC<ToolbarProps> = ({
           </fieldset>
           <fieldset className='series'>
             <legend>Serie</legend>
+            <div className='input-label-corelation' style={{ marginTop: '5px' }}>
+                <label htmlFor="port-input">PORT:</label>
+                <input 
+                  type="text" 
+                  id='port-input'
+                  value={port}
+                  onChange={(e) => setPort(e.target.value)}
+                  style={{ width: '20px', textAlign: 'center' }}
+                />
+              </div>
           </fieldset>
         </div>
       </fieldset>
