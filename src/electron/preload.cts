@@ -1,4 +1,5 @@
 const electron = require('electron');
+const { contextBridge, ipcRenderer } = electron;
 
 let socket: WebSocket | null = null;
 let messageCallback: ((data: string) => void) | null = null;
@@ -69,4 +70,28 @@ const websocketAPI = {
     }
 };
 
+// API for serial ports
+const serialPortAPI = {
+    listPorts: async (): Promise<any[]> => {
+        console.log("preload.cts: Calling listPorts");
+        try {
+            const ports = await ipcRenderer.invoke('list-serial-ports');
+            console.log("preload.cts: Received ports:", ports);
+            return ports;
+        } catch (error) {
+            console.error("preload.cts: Error when fetching ports:", error);
+            return [];
+        }
+    }
+};
+
+// Add new API for saving files
+const fileSystemAPI = {
+    saveMeasurementData: (data: any[]) => {
+        return ipcRenderer.invoke('save-measurement-data', data);
+    }
+};
+
 electron.contextBridge.exposeInMainWorld("websocket", websocketAPI);
+contextBridge.exposeInMainWorld("serialport", serialPortAPI);
+contextBridge.exposeInMainWorld("fileSystem", fileSystemAPI);

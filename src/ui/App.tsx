@@ -32,6 +32,16 @@ declare global {
             disconnect: () => void;
             isConnected: () => boolean;
         };
+        serialport: {
+            listPorts: () => Promise<Array<{ path: string }>>;
+        };
+        fileSystem: {
+            saveMeasurementData: (data: any[]) => Promise<{
+                success: boolean;
+                message: string;
+                path?: string;
+            }>;
+        };
     }
 }
 
@@ -94,9 +104,18 @@ const App: React.FC = () => {
             console.log("Disconnecting WebSocket");
             
             const stopConfig = {
-                command: 'stop'
+                command: 'stop',
+                port: null,
+                iterations: null,
+                isVoltSrc: null,
+                voltLimit: null,
+                currLimit: null,
+                iMax: null,
+                iMin: null,
+                uMax: null,
+                uMin: null
             };
-            
+
             console.log("Sending stop command");
             window.websocket.send(JSON.stringify(stopConfig));
             
@@ -189,6 +208,7 @@ const App: React.FC = () => {
                 setIsMeasuring={setIsMeasuring}
                 startMeasurement={startMeasurement}
                 stopMeasurement={stopMeasurement}
+                data={measurementData}
             />
             <div className="chart-container">
                 <ScatterChart 
@@ -196,23 +216,6 @@ const App: React.FC = () => {
                     yScaleType={yScaleType}
                     data={measurementData}
                 />
-                
-                {/* Status panel */}
-                <div style={{ 
-                    position: 'absolute', 
-                    bottom: 5, 
-                    right: 5, 
-                    background: 'rgba(0,0,0,0.7)', 
-                    color: 'white',
-                    padding: 8,
-                    borderRadius: 5,
-                    overflow: 'hidden',
-                    width: 180,
-                    fontSize: '12px'
-                }}>
-                    <div>{isConnected ? "Connected" : "Disconnected"}</div>
-                    <div>Points: {measurementData.length}</div>
-                </div>
             </div>
         </div>
     );
