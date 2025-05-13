@@ -13,13 +13,14 @@ from pymeasure.experiment import Results, Worker
 from pymeasure.instruments.keithley import Keithley2400
 
 import logging
+from logging.handlers import QueueHandler
 log = logging.getLogger('')
 log.addHandler(logging.NullHandler())
-
+log.setLevel(logging.DEBUG)
 
 class DataCommand(BaseModel):
     command: Optional[str] = None
-    port: str
+    port: Optional[str] = None
     timeout: Optional[int] = 20 #minutes
     isVoltSrc: Optional[bool] = True
     voltLimit: Optional[float] = None
@@ -32,7 +33,7 @@ class DataCommand(BaseModel):
     
 class TestDataCommand(BaseModel):
     command: Optional[str] = None
-    port: str
+    port: Optional[str] = None
     timeout: Optional[int] = 20 #minutes
     isVoltSrc: Optional[bool] = True
     voltLimit: Optional[float] = None
@@ -237,6 +238,8 @@ class MeasureTestWebSocket(Procedure):
 
 app = FastAPI()
 manager = ConnectionManager()
+
+worker: Optional[Worker] = None
    
 
 @app.get("/")
@@ -274,6 +277,7 @@ def start() -> dict:
     
 @app.websocket("/com")
 async def websocket_endpoint(websocket: WebSocket):
+    global worker
     await manager.connect(websocket)
     try:
         while True:
@@ -290,12 +294,20 @@ async def websocket_endpoint(websocket: WebSocket):
             print(data)
             print(data.command)
             if data.command == "start":
+                if 'procedure' in globals() and procedure.status == 4:
+                    manager.add_queue('Cannot start: another measurement is running')
+                    continue
                 id = int(time.monotonic()*10)
                 work_thread = threading.Thread(target=start_job, args=(data, id))
                 work_thread.start()
             elif data.command == "stop":
-                pass
+                if worker is not None:
+                    worker.stop() 
+                    await manager.send_personal_message("Stopping backend", websocket)
             elif data.command == "test":
+                if 'procedure' in globals() and procedure.status == 4:
+                    manager.add_queue('Cannot start: another measurement is running')
+                    continue
                 id = int(time.monotonic()*10)
                 work_thread = threading.Thread(target=test_job, args=(data, id))
                 work_thread.start()
@@ -306,15 +318,17 @@ async def websocket_endpoint(websocket: WebSocket):
 procedure: MeasureProcedure
 
 
-def start_job(command: DataCommand, id: int):
-    global procedure
+def start_job(command: DataCommand, job_id: int):
+    global procedure, worker, log
+    _reset_root_logger_handlers(log)
+    
     scribe = console_log(log, level=logging.DEBUG)
     scribe.start()
 
     filename = tempfile.mktemp()
     log.info("Using data file: %s" % filename)
     #start measuring procedure
-    procedure = MeasureProcedure(port=f"ASRL{command.port}::INSTR", id=id)
+    procedure = MeasureProcedure(port=f"ASRL{command.port}::INSTR", id=job_id)
     procedure.source_type= "VOLT" if command.isVoltSrc else "CURR"
     procedure.iterations = command.iterations
     procedure.delay = 0.1
@@ -350,15 +364,17 @@ def start_job(command: DataCommand, id: int):
     scribe.stop()
     
     
-def test_job(command: TestDataCommand, id: int):
-    global procedure
+def test_job(command: TestDataCommand, job_id: int):
+    global procedure, worker, log
+    
+    _reset_root_logger_handlers(log)
     scribe = console_log(log, level=logging.DEBUG)
     scribe.start()
 
     filename = tempfile.mktemp()
     log.info("Using data file: %s" % filename)
 
-    procedure = MeasureTestWebSocket(port=f"ASRL{command.port}::INSTR", id=id, source_type="CURR")
+    procedure = MeasureTestWebSocket(port=f"ASRL{command.port}::INSTR", id=job_id, source_type="CURR")
     procedure.iterations = command.iterations
     procedure.delay = 0.1
     procedure.test_data = command.test_values
@@ -381,3 +397,12 @@ def test_job(command: TestDataCommand, id: int):
     log.info("Stopping the logging")
     scribe.stop()
     
+def _reset_root_logger_handlers(logger_to_reset: logging.Logger):
+    for handler in list(logger_to_reset.handlers): 
+        logger_to_reset.removeHandler(handler)
+        if hasattr(handler, 'close'): 
+            try:
+                handler.close()
+            except Exception:
+                pass 
+    logger_to_reset.addHandler(logging.NullHandler())
