@@ -1,6 +1,7 @@
 import { useScale } from '../electron/useScale';
 import './Toolbar.css'
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
+import { DataPoint } from './ScatterChart';
 
 interface ToolbarProps {
   xScaleType: "linear" | "log";
@@ -15,6 +16,12 @@ interface ToolbarProps {
   startMeasurement: (iterations: number, port: string, config?: any) => boolean;
   stopMeasurement: () => void;
   disconnect?: () => void;
+  data?: DataPoint[];
+}
+
+// Serial port interface
+interface SerialPortInfo {
+  path: string;
 }
 
 // Function to convert value based on selected unit
@@ -45,6 +52,21 @@ const convertValue = (value: string, elementId: string): number => {
   }
 };
 
+// Function to extract port number from port path
+const extractPortNumber = (portPath: string): string => {
+  const match = portPath.match(/COM(\d+)/i);
+  if (match && match[1]) {
+    return match[1];
+  }
+
+  const usbMatch = portPath.match(/ttyUSB(\d+)/i);
+  if (usbMatch && usbMatch[1]) {
+    return usbMatch[1];
+  }
+
+  return portPath;
+};
+
 const Toolbar = ({
   xScaleType, 
   yScaleType, 
@@ -54,7 +76,8 @@ const Toolbar = ({
   isConnected,
   isMeasuring,
   startMeasurement,
-  stopMeasurement
+  stopMeasurement,
+  data = []
 }: ToolbarProps) => {
   const scale = useScale();
 
@@ -62,16 +85,26 @@ const Toolbar = ({
   const [sourceType, setSourceType] = useState<string>("voltage-src");
   const [measuredValueX, setMeasuredValueX] = useState<string>("I");
   const [measuredValueY, setMeasuredValueY] = useState<string>("U");
-  const [iterations, setIterations] = useState<number>(10);
-  const [port, setPort] = useState<string>("7");
+  const [iterations, setIterations] = useState<string>("");
+  const [port, setPort] = useState<string>("");
+  const [serialPorts, setSerialPorts] = useState<SerialPortInfo[]>([]);
 
    // Form field states for measurement parameters
-  const [currentLimit, setCurrentLimit] = useState<string>("3");
-  const [voltageMax, setVoltageMax] = useState<string>("20"); 
-  const [voltageMin, setVoltageMin] = useState<string>("0");
-  const [voltageLimit, setVoltageLimit] = useState<string>("5");
-  const [currentMax, setCurrentMax] = useState<string>("2");
-  const [currentMin, setCurrentMin] = useState<string>("0");
+  const [currentLimit, setCurrentLimit] = useState<string>("");
+  const [voltageMax, setVoltageMax] = useState<string>(""); 
+  const [voltageMin, setVoltageMin] = useState<string>("");
+  const [voltageLimit, setVoltageLimit] = useState<string>("");
+  const [currentMax, setCurrentMax] = useState<string>("");
+  const [currentMin, setCurrentMin] = useState<string>("");
+
+  // State for alerts/popups
+  const [showAlert, setShowAlert] = useState<boolean>(false);
+  const [alertMessage, setAlertMessage] = useState<string>("");
+
+  // Load port list on initial component mount
+  useEffect(() => {
+    refreshSerialPorts()
+  }, []);
 
   const handleChangeX = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newValue = e.target.value;
@@ -86,17 +119,103 @@ const Toolbar = ({
   }
 
   const handleIterationsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value);
-    if (!isNaN(value) && value > 0) {
-      setIterations(value);
+      setIterations(e.target.value);
+  };
+
+  const handlePortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedPath = e.target.value;
+    const portNum = extractPortNumber(selectedPath);
+    setPort(portNum);
+  };
+
+  // Function to check if all values are valid (non-zero, non-negative)
+  const checkValues = (isVoltSrc: boolean): boolean => {
+    if (isVoltSrc) {
+      const currLimit = convertValue(currentLimit, "current-limiter-units");
+      const vMax = parseFloat(voltageMax);
+      const vMin = parseFloat(voltageMin);
+      
+      return (
+        currLimit > 0 && 
+        !isNaN(vMax) && vMax > 0 && 
+        !isNaN(vMin) && vMin >= 0 && 
+        vMin < vMax
+      );
+    } else {
+      const vLimit = convertValue(voltageLimit, "voltage-limiter-units");
+      const iMax = parseFloat(currentMax);
+      const iMin = parseFloat(currentMin);
+      
+      return (
+        vLimit > 0 && 
+        !isNaN(iMax) && iMax > 0 && 
+        !isNaN(iMin) && iMin >= 0 && 
+        iMin < iMax
+      );
     }
   };
+
+  // Validation check before sending to backend
+  const checkData = (isVoltSrc: boolean): boolean => {
+    if (!checkValues(isVoltSrc)) {
+      showAlertMessage("Error. Missing data.");
+      return false;
+    }
+    return true;
+  };
+
+  // Function to refresh the list of available serial ports
+  const refreshSerialPorts = async () => {  
+    try {
+      const allPorts = await window.serialport.listPorts();
+      const simplePorts = allPorts.map((port: { path: string }) => ({ path: port.path }));
+      
+      if (!simplePorts || simplePorts.length === 0) {
+        console.log("No COM ports found");
+        setSerialPorts([]);
+        return;
+      }
+      
+      console.log("Received ports:", simplePorts);
+      setSerialPorts(simplePorts);
+      
+      // Automatycznie wybierz pierwszy port, jeśli żaden nie jest wybrany
+      if (simplePorts.length > 0 && !port) {
+        const portPath = simplePorts[0].path;
+        const portNum = extractPortNumber(portPath);
+        setPort(portNum);
+      }
+    } catch (error) {
+      console.error("Error while fetching port list:", error);
+      setSerialPorts([]);
+    }
+  };
+
+  // Function for saving measurement data
+  const handleSaveData = useCallback(async () => {
+    if (!data || data.length === 0) {
+      return;
+    }
+
+    try {
+      await window.fileSystem.saveMeasurementData(data);
+      
+    } catch (error) {
+      console.error('Error saving data:', error);
+    }
+  }, [data]);
 
   // Function to start measurement
   const handleStart = useCallback(async () => {
     if (isMeasuring) return;
     
     try {
+      const isVoltSrc = sourceType === "voltage-src";
+      
+      if (!checkData(isVoltSrc)) {
+        return;
+      }
+      
       if (!isConnected) {
         const connected = await connect();
         if (!connected) {
@@ -104,11 +223,9 @@ const Toolbar = ({
         }
       }
 
-      const isVoltSrc = sourceType === "voltage-src";
-
       const config = {
         isVoltSrc,
-        iterations,
+        iterations: parseInt(iterations),
         ...(isVoltSrc 
           ? {
               currLimit: convertValue(currentLimit, "current-limiter-units"),
@@ -125,12 +242,12 @@ const Toolbar = ({
       console.log("Measurement config with converted limits:", config);
       
       setTimeout(() => {
-        startMeasurement(iterations, port, config);
+        startMeasurement(parseInt(iterations), port, config);
       }, 50);
     } catch (error) {
       console.error('Error connecting or starting measurement:', error);
     }
-  }, [isMeasuring, isConnected, iterations, sourceType, currentLimit, voltageMax, voltageMin, voltageLimit, currentMax, currentMin, connect, startMeasurement]);
+  }, [isMeasuring, isConnected, iterations, sourceType, currentLimit, voltageMax, voltageMin, voltageLimit, currentMax, currentMin, connect, startMeasurement, port]);
   
   // Function to stop measurement
   const handleStop = useCallback(() => {
@@ -138,7 +255,15 @@ const Toolbar = ({
     stopMeasurement();
   }, [isConnected, stopMeasurement]);
 
-
+  // Function to display alert message
+  const showAlertMessage = (message: string) => {
+    setAlertMessage(message);
+    setShowAlert(true);
+    
+    setTimeout(() => {
+      setShowAlert(false);
+    }, 2000);
+  };
 
   return (
     <div className='toolbar' 
@@ -181,6 +306,34 @@ const Toolbar = ({
             </select>
           </div>
         </div>
+
+        {/* Alert */}
+        {showAlert && (
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.85)',
+            color: 'white',
+            padding: '15px',
+            zIndex: 9999,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            textAlign: 'center'
+          }}>
+            <p style={{ 
+              margin: 0, 
+              fontWeight: 'bold', 
+              fontSize: '20px',
+              textShadow: '0 1px 2px rgba(0,0,0,0.8)'
+            }}>
+              {alertMessage}
+            </p>
+          </div>
+        )}
 
         <div className='input-container'>
           {sourceType === "voltage-src" && (
@@ -282,12 +435,36 @@ const Toolbar = ({
         {/* Presets */}
         <fieldset className='presets'>
           <legend>Presety</legend>
-          <button className='save-preset-btn'>Zapisz preset</button>
-          <button className='load-preset-btn'>Wczytaj preset</button>
+          <button 
+            className='save-preset-btn' 
+            onClick={handleSaveData}
+            disabled={!data || data.length === 0}
+          >
+            Save data
+          </button>
           <div className='input-label-corelation'>
-            <label htmlFor="choose-presets">Presety</label>
-            <select name="choose-presets" id="choose-presets">
-
+            <label htmlFor="choose-presets">COM</label>
+            <button 
+              className='load-preset-btn'
+              onClick={refreshSerialPorts}
+            >
+              Refresh Ports
+            </button>
+            <select 
+              name="choose-presets"
+              id="choose-presets"
+              value={serialPorts.find(p => extractPortNumber(p.path) === port)?.path || ''}
+              onChange={handlePortChange}
+            >
+              {serialPorts.length > 0 ? (
+                serialPorts.map((portInfo, index) => (
+                  <option key={index} value={portInfo.path}>
+                    {portInfo.path}
+                  </option>
+                ))
+              ) : (
+                <option value="">No available ports</option>
+              )}
             </select>
           </div>
         </fieldset>
@@ -404,15 +581,7 @@ const Toolbar = ({
           <fieldset className='series'>
             <legend>Serie</legend>
             <div className='input-label-corelation' style={{ marginTop: '5px' }}>
-                <label htmlFor="port-input">PORT:</label>
-                <input 
-                  type="text" 
-                  id='port-input'
-                  value={port}
-                  onChange={(e) => setPort(e.target.value)}
-                  style={{ width: '20px', textAlign: 'center' }}
-                />
-              </div>
+            </div>
           </fieldset>
         </div>
       </fieldset>
