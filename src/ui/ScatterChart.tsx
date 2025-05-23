@@ -30,7 +30,7 @@ const ScatterChart = ({
   
     const width = 1900 * scale;
     const height = 790 * scale;
-    const margin = { top: 20, right: 20, bottom: 30, left: 60 };
+    const margin = { top: 20, right: 20, bottom: 50, left: 60 };
     const symlogConstant = 1;
 
     // Creating a linear/symlog scale
@@ -246,18 +246,20 @@ const ScatterChart = ({
     
     svg.append("text")
       .attr("x", width / 2)
-      .attr("y", height - 5)
+      .attr("y", height - 10)
       .attr("text-anchor", "middle")
-      .attr("font-size", `${14 * scale}px`)
-      .text("Napięcie [V]");
+      .attr("font-size", `${18 * scale}px`)
+      .attr("fill", "white")
+      .text("Voltage [V]");
       
     svg.append("text")
       .attr("transform", "rotate(-90)")
       .attr("x", -height / 2)
       .attr("y", 15)
       .attr("text-anchor", "middle")
-      .attr("font-size", `${14 * scale}px`)
-      .text("Prąd [A]");
+      .attr("font-size", `${18 * scale}px`)
+      .attr("fill", "white")
+      .text("Current [A]");
     };
 
     // Drawing points
