@@ -502,20 +502,22 @@ const Toolbar = ({
               {measuredValueX === "I" && (
               <>
                 <select name="axis-unit">
-                <option value="μA">μA</option>
-                      <option value="mA">mA</option>
-                      <option value="A">A</option>
-                      <option value="kA">kA</option>
+                  <option value="nA">nA</option>
+                  <option value="μA">μA</option>
+                  <option value="mA">mA</option>
+                  <option value="A">A</option>
+                  <option value="kA">kA</option>
                 </select>
               </>
               )}
               {measuredValueX === "U" && (
               <>
                 <select name="axis-unit">
-                <option value="μV">μV</option>
-                      <option value="mV">mV</option>
-                      <option value="V">V</option>
-                      <option value="kV">kV</option>
+                  <option value="nV">nV</option>
+                  <option value="μV">μV</option>
+                  <option value="mV">mV</option>
+                  <option value="V">V</option>
+                  <option value="kV">kV</option>
                 </select>
               </>
               )}
@@ -550,20 +552,22 @@ const Toolbar = ({
               {measuredValueY === "U" && (
                 <>
                   <select name="axis-unit">
-                  <option value="μV">μV</option>
-                        <option value="mV">mV</option>
-                        <option value="V">V</option>
-                        <option value="kV">kV</option>
+                    <option value="nV">nV</option>
+                    <option value="μV">μV</option>
+                    <option value="mV">mV</option>
+                    <option value="V">V</option>
+                    <option value="kV">kV</option>
                   </select>
                 </>
               )}
               {measuredValueY === "I" && (
                 <>
                   <select name="axis-unit">
-                  <option value="μA">μA</option>
-                        <option value="mA">mA</option>
-                        <option value="A">A</option>
-                        <option value="kA">kA</option>
+                    <option value="nA">nA</option>
+                    <option value="μA">μA</option>
+                    <option value="mA">mA</option>
+                    <option value="A">A</option>
+                    <option value="kA">kA</option>
                   </select>
                 </>
               )}
