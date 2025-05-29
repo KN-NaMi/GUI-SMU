@@ -43,7 +43,7 @@ class TestDataCommand(BaseModel):
     uMax: Optional[float] = None
     uMin: Optional[float] = None
     iterations: Optional[int] = None
-    test_values: list = [[-10,-20],[10,20], [100,200], [1000,2000], [10000,20000], [100000,200000], [1000000,2000000], [10000000,20000000]]
+    test_values: list = [[-0.000001,-0.000002],[-0.002, -0.065],[0.000003, 0.000005],[0.001, 0.006],[0.023, 0.017],[0.3, 0.55], [0.4, 0.66]]
     
 class ReturnAPI(BaseModel):
     is_started: bool

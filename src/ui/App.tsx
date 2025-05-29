@@ -1,7 +1,8 @@
-import Toolbar from "./Toolbar";
+import Toolbar, { ChartAxisKey } from "./Toolbar";
 import './App.css'
 import ScatterChart from "./ScatterChart";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { scaleChartData, CurrentUnit, VoltageUnit } from './ScaleChartData';
 
 // Interface for measurement data points
 interface DataPoint {
@@ -49,7 +50,26 @@ declare global {
 const App: React.FC = () => {
     const [xScaleType, setXScaleType] = useState<"linear" | "log">("linear");
     const [yScaleType, setYScaleType] = useState<"linear" | "log">("linear");
+
+    const [currentUnit, setCurrentUnit] = useState<CurrentUnit>('A');
+    const [voltageUnit, setVoltageUnit] = useState<VoltageUnit>('V');
+
+    const [xAxisDataKey, setXAxisDataKey] = useState<ChartAxisKey>('current');
+    const [yAxisDataKey, setYAxisDataKey] = useState<ChartAxisKey>('voltage');
+
+    const handleCurrentUnitChange = (unit: CurrentUnit) => {
+        setCurrentUnit(unit);
+    };
+
+    const handleVoltageUnitChange = (unit: VoltageUnit) => {
+        setVoltageUnit(unit);
+    };
     
+const handleAxesChange = useCallback((newXKey: ChartAxisKey, newYKey: ChartAxisKey) => {
+        setXAxisDataKey(newXKey);
+        setYAxisDataKey(newYKey);
+    }, []);
+
     // WebSocket connection state
     const [isConnected, setIsConnected] = useState(false);
     const [measurementData, setMeasurementData] = useState<DataPoint[]>([]);
@@ -182,6 +202,10 @@ const App: React.FC = () => {
         }
     }, [disconnect, measurementData.length]);
 
+    const scaledMeasurementData = useMemo(() => {
+        return scaleChartData(measurementData, currentUnit, voltageUnit);
+    }, [measurementData, currentUnit, voltageUnit]);
+
     // Set up WebSocket message handling
     useEffect(() => {
         if (window.websocket) {
@@ -209,12 +233,21 @@ const App: React.FC = () => {
                 startMeasurement={startMeasurement}
                 stopMeasurement={stopMeasurement}
                 data={measurementData}
+                onCurrentUnitChange={handleCurrentUnitChange}
+                onVoltageUnitChange={handleVoltageUnitChange}
+                selectedCurrentUnit={currentUnit}
+                selectedVoltageUnit={voltageUnit}
+                onAxesChange={handleAxesChange}
             />
             <div className="chart-container">
                 <ScatterChart 
                     xScaleType={xScaleType}
                     yScaleType={yScaleType}
-                    data={measurementData}
+                    data={scaledMeasurementData}
+                    xAxisDataKey={xAxisDataKey}
+                    yAxisDataKey={yAxisDataKey}
+                    selectedCurrentUnit={currentUnit}
+                    selectedVoltageUnit={voltageUnit}
                 />
             </div>
         </div>

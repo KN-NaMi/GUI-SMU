@@ -1,7 +1,9 @@
 import * as d3 from "d3";
 import { useEffect, useRef } from "react";
 import { useScale } from '../electron/useScale';
+import { ChartAxisKey } from './Toolbar';
 import "./ScatterChart.css";
+import { CurrentUnit, VoltageUnit } from './ScaleChartData';
 
 export interface DataPoint {
   step: number;
@@ -13,12 +15,20 @@ interface ScatterChartProps {
   data?: DataPoint[];
   xScaleType: "linear" | "log";
   yScaleType: "linear" | "log";
+  xAxisDataKey: ChartAxisKey;
+  yAxisDataKey: ChartAxisKey;
+  selectedCurrentUnit: CurrentUnit;
+  selectedVoltageUnit: VoltageUnit;
 }
 
 const ScatterChart = ({ 
   data = [],
   xScaleType = "linear",
-  yScaleType = "linear" 
+  yScaleType = "linear",
+  xAxisDataKey,
+  yAxisDataKey,
+  selectedCurrentUnit,
+  selectedVoltageUnit,
 }: ScatterChartProps) => {
 
   const svgRef = useRef<SVGSVGElement>(null);
@@ -32,6 +42,13 @@ const ScatterChart = ({
     const height = 790 * scale;
     const margin = { top: 20, right: 20, bottom: 50, left: 60 };
     const symlogConstant = 1;
+
+    // Mapping axis keys to display names
+    const axisLabels: Record<ChartAxisKey, string> = {
+      voltage: `Voltage [${selectedVoltageUnit}]`,
+      current: `Current [${selectedCurrentUnit}]`,
+      step: "Step",
+    };
 
     // Creating a linear/symlog scale
     const createScale = (
@@ -61,44 +78,51 @@ const ScatterChart = ({
       }
 
       //SymLog
-      const absMax = Math.max(Math.abs(min), Math.abs(max));
-      const upper = Math.ceil(Math.log10(absMax));
-      const lower = -upper;
+      let mainTicks: number[] = [];
+      let minorTicks: number[] = [];
 
-      let mainTicks = [];
-      let minorTicks = [];
+      const maxAbsVal = Math.max(Math.abs(min), Math.abs(max));
+      const expRangeStart = Math.floor(Math.log10(Math.max(symlogConstant, maxAbsVal / 1000)));
+      const expRangeEnd = Math.ceil(Math.log10(Math.max(symlogConstant, maxAbsVal * 1000)));
 
       // Ticks for negative numbers
-      for (let i = lower; i <= 0; i++) {
-        const value = -Math.pow(10, -i);
-        mainTicks.push(value);
+      for (let i = expRangeStart; i <= expRangeEnd; i++) {
+        const pow10 = Math.pow(10, i);
 
-        if (i < 0) {
-          for (let j = 2; j < 10; j++) {
-            minorTicks.push(-j * Math.pow(10, -i - 1));
+        if (pow10 >= min && pow10 <= max) {
+            mainTicks.push(pow10);
+        }
+
+        if (-pow10 >= min && -pow10 <= max && pow10 !== 0) {
+          mainTicks.push(-pow10);
+        }
+
+        for (let j = 2; j < 10; j++) {
+          const minorValue = j * Math.pow(10, i);
+          if (minorValue >= min && minorValue <= max) {
+              minorTicks.push(minorValue);
+          }
+          if (-minorValue >= min && -minorValue <= max) {
+              minorTicks.push(-minorValue);
           }
         }
       }
+      
 
       // Add zero if it's in range
       if (min <= 0 && max >= 0) {
         mainTicks.push(0);
       }
 
-      // Ticks for positive numbers
-      for (let i = 0; i <= upper; i++) {
-        mainTicks.push(Math.pow(10, i));
-        
-        if (i > 0) {
-          for (let j = 2; j < 10; j++) {
-            minorTicks.push(j * Math.pow(10, i - 1));
-          }
-        }
-      }
+      mainTicks = Array.from(new Set(mainTicks)).sort((a, b) => a - b);
+      minorTicks = Array.from(new Set(minorTicks)).sort((a, b) => a - b);
+
+      mainTicks = mainTicks.filter(t => t >= min && t <= max);
+      minorTicks = minorTicks.filter(t => t >= min && t <= max);
       
       return {
-        main: mainTicks.filter(t => t >= min && t <= max),
-        minor: minorTicks.filter(t => t >= min && t <= max)
+        main: mainTicks,
+        minor: minorTicks
       };
     };
 
@@ -113,39 +137,83 @@ const ScatterChart = ({
 
       // SymLog
       if (value === 0) return "0";
-      if (value === 1) return "1";
       if (value === -1) return "-1";
+      if (value === 1) return "1";
+      if (Math.abs(value) < symlogConstant) {
+        return d3.format(".1f")(value);
+      }
       
       const exp = Math.log10(Math.abs(value));
-      const roundedExp = Math.round(exp * 1e12) / 1e12;
+      const roundedExp = Math.round(exp );
       
       if (value < 0) {
-        return roundedExp % 1 === 0 ? `-10^${roundedExp}` : "";
+        return roundedExp % 1 === 0 ? `-10^${Math.round(roundedExp)}` : "";
       }
-      return roundedExp % 1 === 0 ? `10^${roundedExp}` : "";
+      return roundedExp % 1 === 0 ? `10^${Math.round(roundedExp)}` : "";
     };
 
-    const getMinMax = (data: DataPoint[], accessor: (d: DataPoint) => number): [number, number] => {
+    const getMinMax = (data: DataPoint[], key: ChartAxisKey, scaleType: "linear" | "log"): [number, number] => {
       if (data.length === 0) {
         return [-10, 10];
       }
       
-      const values = data.map(accessor);
-      const min = Math.min(...values);
-      const max = Math.max(...values);
-      
-      const padding = (max - min) * 0.1;
-      
-      if (min === max) {
-        return [min - 1, max + 1];
+      const values = data.map(d => d[key]);
+      const minData = d3.min(values) as number;
+      const maxData = d3.max(values) as number;
+
+      let min = minData;
+      let max = maxData;
+
+      if (minData === maxData) {
+        min = minData - 1;
+        max = maxData + 1;
+      } else {
+        
+        if (scaleType === "linear") {
+          const padding = (maxData - minData) * 0.1;
+          min = minData - padding;
+          max = maxData + padding;
+        } else { 
+          const absMaxData = Math.max(Math.abs(minData), Math.abs(maxData));
+          const basePadding = absMaxData * 0.05;
+          const constantPadding = symlogConstant * 0.5;
+
+          if (minData < 0 && maxData > 0) {
+            min = -absMaxData - basePadding - constantPadding;
+            max = absMaxData + basePadding + constantPadding;
+          } else if (minData >= 0) {
+            min = Math.max(0, minData - basePadding);
+            max = maxData + basePadding;
+          } else {
+            min = minData - basePadding;
+            max = Math.min(0, maxData + basePadding);
+          }
+
+          if (minData >= 0 && min < 0) min = 0;
+          if (maxData <= 0 && max > 0) max = 0;
+
+          if (Math.abs(max - min) < symlogConstant * 2) {
+                const center = (minData + maxData) / 2;
+                min = center - symlogConstant * 1.5;
+                max = center + symlogConstant * 1.5;
+              
+                if (minData < 0 && maxData > 0) {
+                    min = Math.min(min, -symlogConstant * 2);
+                    max = Math.max(max, symlogConstant * 2);
+                } else if (minData >= 0 && min < 0) {
+                    min = 0;
+                } else if (maxData <= 0 && max > 0) {
+                    max = 0;
+                }
+            }
+        }
       }
-      
-      return [min - padding, max + padding];
+      return [min, max];
     };
 
     // Creating scales
-    const xDomain = getMinMax(chartData, d => d.voltage);
-    const yDomain = getMinMax(chartData, d => d.current);
+    const xDomain = getMinMax(chartData, xAxisDataKey, xScaleType);
+    const yDomain = getMinMax(chartData, yAxisDataKey, yScaleType);
 
     const xScale = createScale(xScaleType, xDomain, [margin.left, width - margin.right]);
     const yScale = createScale(yScaleType, yDomain, [height - margin.bottom, margin.top]);
@@ -189,7 +257,7 @@ const ScatterChart = ({
       .attr("stroke-dasharray", "3 3");
 
       // Additional minor grid for symlog scale
-      if (xScaleType === "log"){
+      if (xScaleType === "log" || yScaleType === "log"){
         svg.append("g")
           .attr("class", "minor-grid")
           .attr("transform", `translate(${margin.left},0)`)
@@ -250,7 +318,7 @@ const ScatterChart = ({
       .attr("text-anchor", "middle")
       .attr("font-size", `${18 * scale}px`)
       .attr("fill", "white")
-      .text("Voltage [V]");
+      .text(axisLabels[xAxisDataKey]);
       
     svg.append("text")
       .attr("transform", "rotate(-90)")
@@ -259,7 +327,7 @@ const ScatterChart = ({
       .attr("text-anchor", "middle")
       .attr("font-size", `${18 * scale}px`)
       .attr("fill", "white")
-      .text("Current [A]");
+      .text(axisLabels[yAxisDataKey]);
     };
 
     // Drawing points
@@ -269,14 +337,14 @@ const ScatterChart = ({
           .selectAll("circle")
           .data(chartData)
           .enter().append("circle")
-          .attr("cx", d => xScale(d.voltage))
-          .attr("cy", d => yScale(d.current))
+          .attr("cx", d => xScale(d[xAxisDataKey]))
+          .attr("cy", d => yScale(d[yAxisDataKey]))
           .attr("r", 5 * scale)
           .attr("fill", "steelblue");
         
         const line = d3.line<DataPoint>()
-          .x(d => xScale(d.voltage))
-          .y(d => yScale(d.current));
+          .x(d => xScale(d[xAxisDataKey]))
+          .y(d => yScale(d[yAxisDataKey]));
         
         svg.append("path")
           .datum(chartData)
@@ -292,7 +360,7 @@ const ScatterChart = ({
     drawPoints();
     svg.selectAll(".domain").remove();
 
-  }, [scale, data, xScaleType, yScaleType]);
+  }, [scale, data, xScaleType, yScaleType, xAxisDataKey, yAxisDataKey, selectedCurrentUnit, selectedVoltageUnit,]);
   
   return(
     <div className="scatter-chart-container" >
