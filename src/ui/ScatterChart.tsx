@@ -341,17 +341,6 @@ const ScatterChart = ({
           .attr("cy", d => yScale(d[yAxisDataKey]))
           .attr("r", 5 * scale)
           .attr("fill", "steelblue");
-        
-        const line = d3.line<DataPoint>()
-          .x(d => xScale(d[xAxisDataKey]))
-          .y(d => yScale(d[yAxisDataKey]));
-        
-        svg.append("path")
-          .datum(chartData)
-          .attr("fill", "none")
-          .attr("stroke", "steelblue")
-          .attr("stroke-width", 2 * scale)
-          .attr("d", line);
       }
     };
 
