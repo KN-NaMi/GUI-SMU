@@ -2,12 +2,20 @@ import { useScale } from '../electron/useScale';
 import './Toolbar.css'
 import React, { useState, useCallback, useEffect } from "react";
 import { DataPoint } from './ScatterChart';
+import { CurrentUnit, VoltageUnit } from './ScaleChartData'
+
+export type ChartAxisKey = 'current' | 'voltage' | 'step';
 
 interface ToolbarProps {
   xScaleType: "linear" | "log";
   yScaleType: "linear" | "log";
   setXScaleType: (type: "linear" | "log") => void;
   setYScaleType: (type: "linear" | "log") => void;
+  onCurrentUnitChange: (unit: CurrentUnit) => void;
+  onVoltageUnitChange: (unit: VoltageUnit) => void;
+  selectedCurrentUnit: CurrentUnit;
+  selectedVoltageUnit: VoltageUnit;
+  onAxesChange: (xAxisKey: ChartAxisKey, yAxisKey: ChartAxisKey) => void;
   connect: () => Promise<boolean>;
   isConnected: boolean;
   setIsConnected: (value: boolean) => void;
@@ -35,8 +43,11 @@ const convertValue = (value: string, elementId: string): number => {
   const unit = selectElement.value;
   
   switch(unit) {
-    case "μA":
-    case "μV":
+    case "nA": 
+    case "nV":
+      return numValue * 0.000000001;
+    case "uA":
+    case "uV":
       return numValue * 0.000001;
     case "mA":
     case "mV":
@@ -72,6 +83,11 @@ const Toolbar = ({
   yScaleType, 
   setXScaleType, 
   setYScaleType,
+  onCurrentUnitChange,
+  onVoltageUnitChange,
+  selectedCurrentUnit,
+  selectedVoltageUnit,
+  onAxesChange,
   connect,
   isConnected,
   isMeasuring,
@@ -83,8 +99,8 @@ const Toolbar = ({
 
   // Basic measurement configuration states
   const [sourceType, setSourceType] = useState<string>("voltage-src");
-  const [measuredValueX, setMeasuredValueX] = useState<string>("I");
-  const [measuredValueY, setMeasuredValueY] = useState<string>("U");
+  const [measuredValueX, setMeasuredValueX] = useState<"I" | "U">("I");
+  const [measuredValueY, setMeasuredValueY] = useState<"I" | "U">("U");
   const [iterations, setIterations] = useState<string>("");
   const [port, setPort] = useState<string>("");
   const [serialPorts, setSerialPorts] = useState<SerialPortInfo[]>([]);
@@ -103,20 +119,39 @@ const Toolbar = ({
 
   // Load port list on initial component mount
   useEffect(() => {
-    refreshSerialPorts()
+    refreshSerialPorts();
+    onAxesChange(mapIUToDataKey(measuredValueX), mapIUToDataKey(measuredValueY));
   }, []);
 
+  const mapIUToDataKey = (value: "I" | "U"): ChartAxisKey => {
+    return value === "I" ? "current" : "voltage";
+  };
+
   const handleChangeX = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newValue = e.target.value;
+    const newValue = e.target.value as "I" | "U";
+    const newYValue = newValue === "I" ? "U" : "I";
     setMeasuredValueX(newValue);
-    setMeasuredValueY(newValue === "I" ? "U" : "I");
-  }
+    setMeasuredValueY(newYValue);
+    onAxesChange(mapIUToDataKey(newValue), mapIUToDataKey(newYValue));
+  };
 
   const handleChangeY = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newValue = e.target.value;
+    const newValue = e.target.value as "I" | "U";
+    const newXValue = newValue === "I" ? "U" : "I";
     setMeasuredValueY(newValue);
-    setMeasuredValueX(newValue === "I" ? "U" : "I");
-  }
+    setMeasuredValueX(newXValue);
+    onAxesChange(mapIUToDataKey(newXValue), mapIUToDataKey(newValue));
+  };
+
+  const handleCurrentChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    // Sprawdzamy, czy wartość z selecta jest zgodna z naszymi typami CurrentUnit
+    onCurrentUnitChange(event.target.value as CurrentUnit);
+  };
+
+  const handleVoltageChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    // Sprawdzamy, czy wartość z selecta jest zgodna z naszymi typami VoltageUnit
+    onVoltageUnitChange(event.target.value as VoltageUnit);
+  };
 
   const handleIterationsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       setIterations(e.target.value);
@@ -501,21 +536,31 @@ const Toolbar = ({
               <div></div>
               {measuredValueX === "I" && (
               <>
-                <select name="axis-unit">
-                <option value="μA">μA</option>
-                      <option value="mA">mA</option>
-                      <option value="A">A</option>
-                      <option value="kA">kA</option>
+                <select 
+                  name="current-axis-unit"
+                  value={selectedCurrentUnit}
+                  onChange={handleCurrentChange}
+                >
+                  <option key='nA' value="nA">nA</option>
+                  <option key='uA' value="uA">μA</option>
+                  <option key='mA' value="mA">mA</option>
+                  <option key='A' value="A">A</option>
+                  <option key='kA' value="kA">kA</option>
                 </select>
               </>
               )}
               {measuredValueX === "U" && (
               <>
-                <select name="axis-unit">
-                <option value="μV">μV</option>
-                      <option value="mV">mV</option>
-                      <option value="V">V</option>
-                      <option value="kV">kV</option>
+                <select
+                 name="voltage-axis-unit"
+                 value={selectedVoltageUnit}
+                 onChange={handleVoltageChange}
+                >
+                  <option key='nV' value="nV">nV</option>
+                  <option key='uV' value="uV">μV</option>
+                  <option key='mV' value="mV">mV</option>
+                  <option key='V' value="V">V</option>
+                  <option key='kV' value="kV">kV</option>
                 </select>
               </>
               )}
@@ -549,21 +594,31 @@ const Toolbar = ({
               <div></div>
               {measuredValueY === "U" && (
                 <>
-                  <select name="axis-unit">
-                  <option value="μV">μV</option>
-                        <option value="mV">mV</option>
-                        <option value="V">V</option>
-                        <option value="kV">kV</option>
+                  <select
+                    name="voltage-axis-unit"
+                    value={selectedVoltageUnit}
+                    onChange={handleVoltageChange}
+                  >
+                    <option key='nV' value="nV">nV</option>
+                    <option key='uV' value="uV">μV</option>
+                    <option key='mV' value="mV">mV</option>
+                    <option key='V' value="V">V</option>
+                    <option key='kV' value="kV">kV</option>
                   </select>
                 </>
               )}
               {measuredValueY === "I" && (
                 <>
-                  <select name="axis-unit">
-                  <option value="μA">μA</option>
-                        <option value="mA">mA</option>
-                        <option value="A">A</option>
-                        <option value="kA">kA</option>
+                  <select 
+                    name="current-axis-unit"
+                    value={selectedCurrentUnit}
+                    onChange={handleCurrentChange}
+                  >
+                    <option key='nA' value="nA">nA</option>
+                    <option key='uA' value="uA">μA</option>
+                    <option key='mA' value="mA">mA</option>
+                    <option key='A' value="A">A</option>
+                    <option key='kA' value="kA">kA</option>
                   </select>
                 </>
               )}
