@@ -18,6 +18,8 @@ log = logging.getLogger('')
 log.addHandler(logging.NullHandler())
 log.setLevel(logging.DEBUG)
 
+#data classes
+
 class DataCommand(BaseModel):
     command: Optional[str] = None
     port: Optional[str] = None
@@ -55,6 +57,7 @@ class ReturnWebSocket(BaseModel):
     current: float
     voltage: float
     
+# manager for async message queue
 
 class ConnectionManager:
     """Class defining socket events"""
@@ -100,7 +103,7 @@ class ConnectionManager:
                 await self.send_measure(message)
             await asyncio.sleep(0.1) 
     
-
+# Main procedure
 
 class MeasureProcedure(Procedure):
     
@@ -200,6 +203,7 @@ class MeasureProcedure(Procedure):
         manager.add_queue("Finished")
         log.info("Finished")
         
+# Procedure for easier testing without SMU present
 
 class MeasureTestWebSocket(Procedure):
 
@@ -236,27 +240,19 @@ class MeasureTestWebSocket(Procedure):
         manager.add_queue("Finished")
         log.info("Finished")
 
+#starting API, manager and worker for procedure
+
 app = FastAPI()
 manager = ConnectionManager()
 
 worker: Optional[Worker] = None
    
+#Api endpoints and websocket
 
 @app.get("/")
 def index() -> Response:
     return Response("server is running")
 
-@app.get("/measure")
-def start() -> ReturnAPI:
-    if procedure.status == 4:
-        return ReturnAPI(job_id=procedure.id, is_started=False, message="Process was already running")
-    else:
-        id = int(time.monotonic()*10)
-        work_thread = threading.Thread(target=start_job, args=("ASRL7::INSTR", id))
-        work_thread.start()
-        ret_data = ReturnAPI(job_id=id, is_started=True, message="Process started")    
-        return ret_data
-    
     
 @app.get("/status")
 def start() -> dict:
@@ -314,9 +310,10 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         manager.disconnect(websocket)
     
-#"ASRL7::INSTR"
+    
 procedure: MeasureProcedure
 
+#Function to start the measurement procedure (both actual and test)
 
 def start_job(command: DataCommand, job_id: int):
     global procedure, worker, log
@@ -397,6 +394,8 @@ def test_job(command: TestDataCommand, job_id: int):
     log.info("Stopping the logging")
     scribe.stop()
     
+#helper function to clear log handlers with multiple procedure calls    
+
 def _reset_root_logger_handlers(logger_to_reset: logging.Logger):
     for handler in list(logger_to_reset.handlers): 
         logger_to_reset.removeHandler(handler)
@@ -406,3 +405,9 @@ def _reset_root_logger_handlers(logger_to_reset: logging.Logger):
             except Exception:
                 pass 
     logger_to_reset.addHandler(logging.NullHandler())
+    
+#starting websockets listening when main is called
+    
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="127.0.0.1", reload=True)
