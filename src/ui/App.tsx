@@ -100,7 +100,7 @@ const handleAxesChange = useCallback((newXKey: ChartAxisKey, newYKey: ChartAxisK
         setIsMeasuring(true);
     
         const measurementConfig = {
-            command: 'test',
+            command: 'start',
             port: port,
             iterations: iterations,
             isVoltSrc: config?.isVoltSrc ?? true,
