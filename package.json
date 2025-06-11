@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "main": "dist-electron/main.js",
+  "description": "GUI application for SMU (Source Measure Unit) control and measurement",
   "author": {
     "name": "KN NaMi",
     "email": "kn.nami@pwr.edu.pl"
