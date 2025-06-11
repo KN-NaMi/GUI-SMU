@@ -39,6 +39,7 @@
         ],
         "asarUnpack": [
             "node_modules/serialport/**/*"
-        ]
+        ],
+        "icon": "public/icon.ico"
     }
 }

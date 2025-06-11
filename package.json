@@ -4,6 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "main": "dist-electron/main.js",
+  "author": {
+    "name": "KN NaMi",
+    "email": "kn.nami@pwr.edu.pl"
+  },
   "scripts": {
     "start:backend": "cd backend && .venv\\Scripts\\activate.bat && uvicorn main:app --reload",
     "start": "concurrently \"npm run dev:react\" \"npm run start:backend\"",
