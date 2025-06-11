@@ -29,6 +29,8 @@
   "devDependencies": {
     "@eslint/js": "^9.21.0",
     "@types/d3": "^7.4.3",
+    "@types/exceljs": "^0.5.3",
+    "@types/node": "^24.0.0",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^4.3.4",

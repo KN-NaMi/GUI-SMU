@@ -1,16 +1,44 @@
 {
     "appId": "com.j-naumowicz.electron-course",
-    "files": ["dist-electron", "dist-react"],
-    "extraResources": ["dist-electron/preload.cjs"],
-    "icon": "public/icon.ico",
+    "files": [
+        "dist-electron",
+        "dist-react",
+        "node_modules/**/*"
+    ],
+    "extraResources": [
+        "dist-electron/preload.cjs",
+        "node_modules/serialport/**/*",
+        "node_modules/exceljs/**/*"
+    ],
     "mac": {
-        "target": "dmg"
+        "target": "dmg",
+        "extraResources": [
+            "node_modules/serialport/**/*",
+            "node_modules/exceljs/**/*"
+        ],
+        "asarUnpack": [
+            "node_modules/serialport/**/*"
+        ]
     },
     "linux": {
         "target": "AppImage",
-        "category": "Utility"
+        "category": "Utility",
+        "extraResources": [
+            "node_modules/serialport/**/*",
+            "node_modules/exceljs/**/*"
+        ],
+        "asarUnpack": [
+            "node_modules/serialport/**/*"
+        ]
     },
     "win": {
-        "target": ["portable", "msi"]
+        "target": ["portable", "msi"],
+        "extraResources": [
+            "node_modules/serialport/**/*",
+            "node_modules/exceljs/**/*"
+        ],
+        "asarUnpack": [
+            "node_modules/serialport/**/*"
+        ]
     }
 }

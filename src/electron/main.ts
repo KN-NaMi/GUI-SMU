@@ -3,8 +3,8 @@ import path from 'path';
 import { isDev } from './util.js';
 import { getPreloadPath } from './pathResolver.js';
 import * as fs from 'fs';
-import ExcelJS from 'exceljs'; 
-import { SerialPort } from 'serialport';
+import ExcelJS from 'exceljs/excel.js';
+import { SerialPort } from 'serialport/dist/index.js';
 
 interface DataPoint {
     step: number;
@@ -70,7 +70,7 @@ app.on("ready", ()=>{
         
                 worksheet.addRows(data);
                 
-                worksheet.columns.forEach(column => {
+                worksheet.columns.forEach((column: Partial<ExcelJS.Column>) => {
                     column.width = 15;
                 });
         
