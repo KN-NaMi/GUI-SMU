@@ -1,7 +1,6 @@
 import { spawn } from 'child_process';
 import path from 'path';
 import { app } from 'electron';
-import fs from 'fs';
 import os from 'os';
 
 let backendProcess: any = null;
