@@ -5,6 +5,7 @@ import { getPreloadPath } from './pathResolver.js';
 import * as fs from 'fs';
 import ExcelJS from 'exceljs/excel.js';
 import { SerialPort } from 'serialport/dist/index.js';
+import { startBackend } from './startBackend.js';
 
 interface DataPoint {
     step: number;
@@ -13,6 +14,9 @@ interface DataPoint {
 }
 
 app.on("ready", ()=>{
+    // Start the backend
+    startBackend();
+
     const mainWindow = new BrowserWindow({
         width: 1920,
         height: 1080,

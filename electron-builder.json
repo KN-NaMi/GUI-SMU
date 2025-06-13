@@ -8,16 +8,21 @@
     "extraResources": [
         "dist-electron/preload.cjs",
         "node_modules/serialport/**/*",
-        "node_modules/exceljs/**/*"
+        "node_modules/exceljs/**/*",
+        "backend/**/*",
+        "python/**/*"
     ],
     "mac": {
         "target": "dmg",
         "extraResources": [
             "node_modules/serialport/**/*",
-            "node_modules/exceljs/**/*"
+            "node_modules/exceljs/**/*",
+            "backend/**/*",
+            "python/**/*"
         ],
         "asarUnpack": [
-            "node_modules/serialport/**/*"
+            "node_modules/serialport/**/*",
+            "node_modules/exceljs/**/*"
         ]
     },
     "linux": {
@@ -25,17 +30,22 @@
         "category": "Utility",
         "extraResources": [
             "node_modules/serialport/**/*",
-            "node_modules/exceljs/**/*"
+            "node_modules/exceljs/**/*",
+            "backend/**/*",
+            "python/**/*"
         ],
         "asarUnpack": [
-            "node_modules/serialport/**/*"
+            "node_modules/serialport/**/*",
+            "node_modules/exceljs/**/*"
         ]
     },
     "win": {
         "target": ["portable", "msi"],
         "extraResources": [
             "node_modules/serialport/**/*",
-            "node_modules/exceljs/**/*"
+            "node_modules/exceljs/**/*",
+            "backend/**/*",
+            "python/**/*"
         ],
         "asarUnpack": [
             "node_modules/serialport/**/*",
