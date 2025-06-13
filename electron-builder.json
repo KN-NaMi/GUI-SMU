@@ -38,8 +38,12 @@
             "node_modules/exceljs/**/*"
         ],
         "asarUnpack": [
-            "node_modules/serialport/**/*"
+            "node_modules/serialport/**/*",
+            "node_modules/exceljs/**/*"
         ],
-        "icon": "public/icon.ico"
+        "icon": "public/icon.ico",
+        "artifactName": "${productName}-Setup-${version}.${ext}",
+        "publisherName": "KN NaMi",
+        "requestedExecutionLevel": "asInvoker"
     }
 }
