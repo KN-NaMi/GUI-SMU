@@ -30,6 +30,8 @@ app.on("ready", ()=>{
 
     if (isDev()) {
         mainWindow.loadURL('http://localhost:5123');
+        // Open DevTools for main process to see backend logs
+        mainWindow.webContents.openDevTools();
     } else {
         mainWindow.loadFile(path.join(app.getAppPath(), '/dist-react/index.html'));
     }

@@ -43,6 +43,9 @@ declare global {
                 path?: string;
             }>;
         };
+        backendLog: {
+            onLog: (callback: (message: string) => void) => void;
+        };
     }
 }
 
@@ -217,6 +220,20 @@ const handleAxesChange = useCallback((newXKey: ChartAxisKey, newYKey: ChartAxisK
             console.log("Cleaning up WebSocket message handler");
         };
     }, [handleWebSocketMessage]);
+
+    // Set up backend log handling
+    useEffect(() => {
+        if (window.backendLog) {
+            console.log("Setting up backend log handler");
+            window.backendLog.onLog((message: string) => {
+                console.log(`[BACKEND] ${message}`);
+            });
+        }
+        
+        return () => {
+            console.log("Cleaning up backend log handler");
+        };
+    }, []);
 
     return (
         <div className="app-container">
