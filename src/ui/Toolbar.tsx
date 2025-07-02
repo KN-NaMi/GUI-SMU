@@ -170,22 +170,28 @@ const Toolbar = ({
       const vMax = parseFloat(voltageMax);
       const vMin = parseFloat(voltageMin);
       
-      return (
+      /*return (
         currLimit > 0 && 
         !isNaN(vMax) && vMax > 0 && 
         !isNaN(vMin) && vMin >= 0 && 
         vMin < vMax
+      );*/
+      return (
+        currLimit > 0 && !isNaN(vMax)&& !isNaN(vMin)
       );
     } else {
       const vLimit = convertValue(voltageLimit, "voltage-limiter-units");
       const iMax = parseFloat(currentMax);
       const iMin = parseFloat(currentMin);
       
-      return (
+      /*return (
         vLimit > 0 && 
         !isNaN(iMax) && iMax > 0 && 
         !isNaN(iMin) && iMin >= 0 && 
         iMin < iMax
+      );*/
+      return (
+        vLimit > 0 && !isNaN(iMax) && !isNaN(iMin) 
       );
     }
   };

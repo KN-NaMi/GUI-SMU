@@ -1,6 +1,6 @@
 import { spawn } from 'child_process';
 import path from 'path';
-import { app, ipcMain, BrowserWindow } from 'electron';
+import { app, BrowserWindow } from 'electron';
 import os from 'os';
 import fs from 'fs';
 import { execSync } from 'child_process';

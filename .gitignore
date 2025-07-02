@@ -29,3 +29,8 @@ backend/__pycache__/
 backend/.venv/
 backend/process.py
 backend/python
+
+python/
+release/
+resources/
+build/

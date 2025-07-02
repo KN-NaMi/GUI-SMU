@@ -24,6 +24,8 @@ class DataCommand(BaseModel):
     command: Optional[str] = None
     port: Optional[str] = None
     timeout: Optional[int] = 20 #minutes
+    delay: Optional[int] = 0.1
+    is4Wire: Optional[bool] = False
     isVoltSrc: Optional[bool] = True
     voltLimit: Optional[float] = None
     currLimit: Optional[float] = None
@@ -37,6 +39,8 @@ class TestDataCommand(BaseModel):
     command: Optional[str] = None
     port: Optional[str] = None
     timeout: Optional[int] = 20 #minutes
+    delay: Optional[int] = 0.1
+    is4Wire: Optional[bool] = False
     isVoltSrc: Optional[bool] = True
     voltLimit: Optional[float] = None
     currLimit: Optional[float] = None
@@ -111,16 +115,17 @@ class MeasureProcedure(Procedure):
     current_ranges = [.000001, .00001, .0001, .001, .01, .1, 1]
 
     def nearest_largest_value (self, n, values):
-        return min([v for v in values if v >= n] or [None])
+        return min([v for v in values if v >= abs(n)] or [None])
 
 
     id = IntegerParameter('Process id', default=999)
     iterations = IntegerParameter('Loop Iterations', default=100)
-    delay = FloatParameter('Delay Time', units='s', default=0.2)
+    delay = FloatParameter('Delay Time', units='s', default=0.1)
     port = Parameter("port", "")
     DATA_COLUMNS = ['Voltage', 'Current']
     progress = FloatParameter('Progress %', units='%', default=0.0)
     source_type = Parameter("source type", default="VOLT")
+    is_4_wire = Parameter("measurement type", default=True)
    
     #voltage parameters
     compliance_current = FloatParameter('compliance current', units='A', default=0.03)
@@ -138,9 +143,10 @@ class MeasureProcedure(Procedure):
         self.meter = Keithley2400(self.port)
         log.info("Setting up parameters")
         if self.source_type == "VOLT":
-            self.meter.apply_voltage()  
-            self.meter.measure_current()            
-            self.meter.source_voltage_range =  self.nearest_largest_value(self.voltage_max, self.voltage_ranges)  
+            self.meter.apply_voltage()
+            self.meter.measure_current()
+            self.meter.wires = 4 if self.is_4_wire else 2
+            self.meter.source_voltage_range =  self.nearest_largest_value(self.voltage_max, self.voltage_ranges)
             self.meter.compliance_current = self.compliance_current
             self.voltages = np.linspace(self.voltage_min, self.voltage_max, self.iterations)
             print(self.voltages)
@@ -149,9 +155,9 @@ class MeasureProcedure(Procedure):
             self.meter.enable_source()
             manager.add_queue("setup completed")
         elif self.source_type == "CURR":
-            self.meter.apply_current()  
-            self.meter.measure_voltage()            
-            self.meter.source_current_range =  self.nearest_largest_value(self.current_max, self.current_ranges)  
+            self.meter.apply_current()
+            self.meter.measure_voltage()
+            self.meter.source_current_range =  self.nearest_largest_value(self.current_max, self.current_ranges)
             self.meter.compliance_voltage = self.compliance_voltage
             self.currents = np.linspace(self.current_min, self.current_max, self.iterations)
             print(self.currents)
@@ -174,6 +180,7 @@ class MeasureProcedure(Procedure):
                 self.progress = 100. * v / self.iterations
                 self.emit('results', data.model_dump())
                 self.emit('progress', self.progress)
+                sleep(self.delay)
                 if self.should_stop():
                     log.warning("Catch stop command in procedure")
                     break
@@ -209,10 +216,11 @@ class MeasureTestWebSocket(Procedure):
 
     id = IntegerParameter('Process id', default=999)
     iterations = IntegerParameter('Loop Iterations', default=100)
-    delay = FloatParameter('Delay Time', units='s', default=0.2)
+    delay = FloatParameter('Delay Time', units='s', default=0.1)
     port = Parameter("port", "")
     DATA_COLUMNS = ['Voltage', 'Current']
     progress = FloatParameter('Progress %', units='%', default=0.0)
+    is_4_wire = Parameter("measurement type", default=True)
     full_results = []
     test_data = []
 
@@ -328,8 +336,8 @@ def start_job(command: DataCommand, job_id: int):
     procedure = MeasureProcedure(port=f"ASRL{command.port}::INSTR", id=job_id)
     procedure.source_type= "VOLT" if command.isVoltSrc else "CURR"
     procedure.iterations = command.iterations
-    procedure.delay = 0.1
-    print(procedure.port)
+    procedure.delay = command.delay
+    procedure.is_4_wire = command.is4Wire
     if command.isVoltSrc:
         #voltage measure parametres
         procedure.compliance_current = command.currLimit
@@ -373,7 +381,8 @@ def test_job(command: TestDataCommand, job_id: int):
 
     procedure = MeasureTestWebSocket(port=f"ASRL{command.port}::INSTR", id=job_id, source_type="CURR")
     procedure.iterations = command.iterations
-    procedure.delay = 0.1
+    procedure.delay = command.delay
+    procedure.is_4_wire = command.is4Wire
     procedure.test_data = command.test_values
     log.info(f"Set up Procedure with {procedure.iterations} iterations")
     
@@ -410,4 +419,4 @@ def _reset_root_logger_handlers(logger_to_reset: logging.Logger):
     
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", reload=True)
+    uvicorn.run(app, host="127.0.0.1", port=8000)
