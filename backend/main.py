@@ -25,6 +25,7 @@ class DataCommand(BaseModel):
     port: Optional[str] = None
     timeout: Optional[int] = 20 #minutes
     delay: Optional[int] = 0.1
+    isBothWays: Optional[bool] = False
     is4Wire: Optional[bool] = False
     isVoltSrc: Optional[bool] = True
     voltLimit: Optional[float] = None
@@ -40,6 +41,7 @@ class TestDataCommand(BaseModel):
     port: Optional[str] = None
     timeout: Optional[int] = 20 #minutes
     delay: Optional[int] = 0.1
+    isBothWays: Optional[bool] = False
     is4Wire: Optional[bool] = False
     isVoltSrc: Optional[bool] = True
     voltLimit: Optional[float] = None
