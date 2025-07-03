@@ -28,3 +28,9 @@ dist-electron
 backend/__pycache__/
 backend/.venv/
 backend/process.py
+
+python/
+release/
+resources/
+build/
+
