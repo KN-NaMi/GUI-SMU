@@ -10,7 +10,7 @@ import numpy as np
 from pymeasure.log import console_log
 from pymeasure.experiment import Procedure, IntegerParameter, Parameter, FloatParameter, ListParameter
 from pymeasure.experiment import Results, Worker
-from pymeasure.instruments.keithley import Keithley2400
+from Keithley2400_adapter import Keithley2400Adapter
 
 import logging
 from logging.handlers import QueueHandler
@@ -113,12 +113,26 @@ class ConnectionManager:
 
 class MeasureProcedure(Procedure):
     
-    voltage_ranges = [.2, 2, 20]
-    current_ranges = [.000001, .00001, .0001, .001, .01, .1, 1]
+    def _generate_sweep_array(self, start: float, end: float, iterations: int, is_both_ways: bool):
+        """
+        Generates an array for the measurement sweep.
+        """
+        if not is_both_ways:
+            return np.linspace(start, end, iterations)
 
-    def nearest_largest_value (self, n, values):
-        return min([v for v in values if v >= abs(n)] or [None])
-
+        if iterations < 2:
+            return np.linspace(start, end, iterations)
+            
+        if iterations % 2 == 1:
+            num_up = (iterations + 1) // 2
+            sweep_up = np.linspace(start, end, num_up)
+            sweep_down = sweep_up[:-1][::-1] 
+            return np.concatenate((sweep_up, sweep_down))
+        else:
+            num_half = iterations // 2
+            sweep_up = np.linspace(start, end, num_half)
+            sweep_down = np.linspace(end, start, num_half)
+            return np.concatenate((sweep_up, sweep_down))
 
     id = IntegerParameter('Process id', default=999)
     iterations = IntegerParameter('Loop Iterations', default=100)
@@ -128,6 +142,7 @@ class MeasureProcedure(Procedure):
     progress = FloatParameter('Progress %', units='%', default=0.0)
     source_type = Parameter("source type", default="VOLT")
     is_4_wire = Parameter("measurement type", default=True)
+    is_both_ways = Parameter("measurement type", default=False)
    
     #voltage parameters
     compliance_current = FloatParameter('compliance current', units='A', default=0.03)
@@ -141,34 +156,50 @@ class MeasureProcedure(Procedure):
     
     def startup(self):
         manager.add_queue("starting setup")
-        log.info("Setting up connection to SMU")
-        self.meter = Keithley2400(self.port)
+        log.info(f"Connecting to SMU at {self.port}")
+        
+        self.meter = Keithley2400Adapter(self.port)
         log.info("Setting up parameters")
+        
         if self.source_type == "VOLT":
-            self.meter.apply_voltage()
-            self.meter.measure_current()
-            self.meter.wires = 4 if self.is_4_wire else 2
-            self.meter.source_voltage_range =  self.nearest_largest_value(self.voltage_max, self.voltage_ranges)
-            self.meter.compliance_current = self.compliance_current
-            self.voltages = np.linspace(self.voltage_min, self.voltage_max, self.iterations)
-            print(self.voltages)
+            voltage_sweep_limit = max(abs(self.voltage_min), abs(self.voltage_max))
+            
+            self.meter.configure_voltage_source(
+                voltage_limit=voltage_sweep_limit, 
+                compliance_current=self.compliance_current, 
+                is_4_wire=self.is_4_wire
+            )
+            
+            self.voltages = self._generate_sweep_array(
+                self.voltage_min, self.voltage_max, self.iterations, self.is_both_ways
+            )
+            
             self.voltages = [float(x) for x in self.voltages]
-            print(self.voltages)
+            log.info(f"Generated {len(self.voltages)} voltage points for sweep.")
             self.meter.enable_source()
-            manager.add_queue("setup completed")
+            
         elif self.source_type == "CURR":
-            self.meter.apply_current()
-            self.meter.measure_voltage()
-            self.meter.source_current_range =  self.nearest_largest_value(self.current_max, self.current_ranges)
-            self.meter.compliance_voltage = self.compliance_voltage
-            self.currents = np.linspace(self.current_min, self.current_max, self.iterations)
-            print(self.currents)
+            current_sweep_limit = max(abs(self.current_min), abs(self.current_max))
+            
+            self.meter.configure_current_source(
+                current_limit=current_sweep_limit,
+                compliance_voltage=self.compliance_voltage,
+                is_4_wire=self.is_4_wire
+            )
+            
+            self.currents = self._generate_sweep_array(
+                self.current_min, self.current_max, self.iterations, self.is_both_ways
+            )
+            
             self.currents = [float(x) for x in self.currents]
-            print(self.currents)
+
+            log.info(f"Generated {len(self.currents)} current points for sweep.")
             self.meter.enable_source()
-            manager.add_queue("setup completed")
+            
         else:
             manager.add_queue("Pass correct parameters and try again")
+        
+        manager.add_queue("setup completed")
         
     def execute(self):
         
@@ -223,6 +254,7 @@ class MeasureTestWebSocket(Procedure):
     DATA_COLUMNS = ['Voltage', 'Current']
     progress = FloatParameter('Progress %', units='%', default=0.0)
     is_4_wire = Parameter("measurement type", default=True)
+    is_both_ways = Parameter("measurement type", default=False)
     full_results = []
     test_data = []
 
@@ -340,6 +372,7 @@ def start_job(command: DataCommand, job_id: int):
     procedure.iterations = command.iterations
     procedure.delay = command.delay
     procedure.is_4_wire = command.is4Wire
+    procedure.is_both_ways = command.isBothWays
     if command.isVoltSrc:
         #voltage measure parametres
         procedure.compliance_current = command.currLimit
@@ -385,6 +418,7 @@ def test_job(command: TestDataCommand, job_id: int):
     procedure.iterations = command.iterations
     procedure.delay = command.delay
     procedure.is_4_wire = command.is4Wire
+    procedure.is_both_ways = command.isBothWays
     procedure.test_data = command.test_values
     log.info(f"Set up Procedure with {procedure.iterations} iterations")
     
