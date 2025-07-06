@@ -146,13 +146,13 @@ class MeasureProcedure(Procedure):
    
     #voltage parameters
     compliance_current = FloatParameter('compliance current', units='A', default=0.03)
-    voltage_min = FloatParameter('From voltage', units='V', default=0)
-    voltage_max = FloatParameter('To voltage', units='V', default=20)
+    voltage_start = FloatParameter('From voltage', units='V', default=0)
+    voltage_end = FloatParameter('To voltage', units='V', default=1)
     
     #current parameters
     compliance_voltage = FloatParameter('compliance voltage', units='V', default=5)
-    current_min = FloatParameter('From current', units='A', default=0)
-    current_max = FloatParameter('To current', units='A', default=0.02)
+    current_start = FloatParameter('From current', units='A', default=0)
+    current_end = FloatParameter('To current', units='A', default=0.02)
     
     def startup(self):
         manager.add_queue("starting setup")
@@ -162,7 +162,7 @@ class MeasureProcedure(Procedure):
         log.info("Setting up parameters")
         
         if self.source_type == "VOLT":
-            voltage_sweep_limit = max(abs(self.voltage_min), abs(self.voltage_max))
+            voltage_sweep_limit = max(abs(self.voltage_start), abs(self.voltage_end))
             
             self.meter.configure_voltage_source(
                 voltage_limit=voltage_sweep_limit, 
@@ -171,7 +171,7 @@ class MeasureProcedure(Procedure):
             )
             
             self.voltages = self._generate_sweep_array(
-                self.voltage_min, self.voltage_max, self.iterations, self.is_both_ways
+                self.voltage_start, self.voltage_end, self.iterations, self.is_both_ways
             )
             
             self.voltages = [float(x) for x in self.voltages]
@@ -179,7 +179,7 @@ class MeasureProcedure(Procedure):
             self.meter.enable_source()
             
         elif self.source_type == "CURR":
-            current_sweep_limit = max(abs(self.current_min), abs(self.current_max))
+            current_sweep_limit = max(abs(self.current_start), abs(self.current_end))
             
             self.meter.configure_current_source(
                 current_limit=current_sweep_limit,
@@ -188,7 +188,7 @@ class MeasureProcedure(Procedure):
             )
             
             self.currents = self._generate_sweep_array(
-                self.current_min, self.current_max, self.iterations, self.is_both_ways
+                self.current_start, self.current_end, self.iterations, self.is_both_ways
             )
             
             self.currents = [float(x) for x in self.currents]
@@ -205,41 +205,42 @@ class MeasureProcedure(Procedure):
         
         if self.source_type == "VOLT":
             log.info("Starting to measure in VOLT mode")
-            for v, voltage in enumerate(self.voltages):
-                
-                self.meter.source_voltage = voltage
-                data = ReturnWebSocket(step=v, current=self.meter.current, voltage=voltage)
-                manager.add_queue(data.model_dump_json())
-                self.progress = 100. * v / self.iterations
-                self.emit('results', data.model_dump())
-                self.emit('progress', self.progress)
-                sleep(self.delay)
-                if self.should_stop():
-                    log.warning("Catch stop command in procedure")
-                    break
+            sweep_array = self.voltages
         elif self.source_type == "CURR":
             log.info("Starting to measure in CURR mode")
-            for c, current in enumerate(self.currents):
-                
-                self.meter.source_current = current
-                data = ReturnWebSocket(step=c, current=self.meter.current, voltage=voltage)
-                manager.add_queue(data.model_dump_json())
-                self.progress = 100. * c / self.iterations
-                self.emit('results', data.model_dump())
-                self.emit('progress', self.progress)
-                if self.should_stop():
-                    log.warning("Catch stop command in procedure")
-                    break
+            sweep_array = self.currents
         else:
-            manager.add_queue("Pass correct parameters and try again")
+            log.error(f"Invalid source_type '{self.source_type}' in execute method.")
+            manager.add_queue("Invalid parameters, stopping execution.")
+            return
+
+        for i, setpoint in enumerate(sweep_array):
+        
+            self.meter.source_value = setpoint
+            sleep(self.delay)
+
+            if self.source_type == "VOLT":
+                voltage = setpoint
+                current = self.meter.measured_value
+            else:
+                current = setpoint
+                voltage = self.meter.measured_value
+
+            data = ReturnWebSocket(step=i, current=current, voltage=voltage)
+            manager.add_queue(data.model_dump_json())
+            self.progress = 100. * (i + 1) / self.iterations
+            
+            self.emit('results', data.model_dump())
+            self.emit('progress', self.progress)
+
+            if self.should_stop():
+                log.warning("Catch stop command in procedure, ending measurement.")
+                break
             
 
     def shutdown(self):
-        self.meter.beep(3600, 1)
-        time.sleep(0.2)
-        self.meter.beep(3600, 0.5)
         self.meter.shutdown()
-        self.meter.adapter.close()
+        self.meter.close()
         manager.add_queue("Finished")
         log.info("Finished")
         
@@ -376,13 +377,13 @@ def start_job(command: DataCommand, job_id: int):
     if command.isVoltSrc:
         #voltage measure parametres
         procedure.compliance_current = command.currLimit
-        procedure.voltage_min = command.uMin
-        procedure.voltage_max = command.uMax
+        procedure.voltage_start = command.uMin
+        procedure.voltage_end = command.uMax
     else:
         #current measure paramters
         procedure.compliance_voltage = command.voltLimit
-        procedure.current_min = command.iMin
-        procedure.current_max = command.iMax
+        procedure.current_start = command.iMin
+        procedure.current_end = command.iMax
     log.info(f"Set up Procedure with {procedure.iterations} iterations")
     
     results = Results(procedure, filename)

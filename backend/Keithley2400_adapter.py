@@ -1,6 +1,6 @@
 from pymeasure.instruments.keithley import Keithley2400
-# Assume SMUInterface is in a file named instrument_interfaces.py
 from SMU import SMUInterface
+from time import sleep
 
 class Keithley2400Adapter(SMUInterface):
     """
@@ -73,6 +73,9 @@ class Keithley2400Adapter(SMUInterface):
 
     def shutdown(self):
         """Turns the source output off and returns to a safe state."""
+        self.instrument.beep(3600, 1)
+        sleep(0.2)
+        self.instrument.beep(3600, 0.5)
         self.instrument.shutdown()
 
     def close(self):
