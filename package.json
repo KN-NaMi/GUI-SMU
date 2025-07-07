@@ -5,7 +5,7 @@
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
-    "start:backend": "cd backend && .venv\\Scripts\\activate.bat && uvicorn main:app --reload",
+    "start:backend": "cd backend/python-embedded && python.exe ../main.py",
     "start": "concurrently \"npm run dev:react\" \"npm run start:backend\"",
     "dev": "concurrently \"npm run dev:react\" \"npm run start:backend\" \"npm run dev:electron\"",
     "dev:react": "vite",

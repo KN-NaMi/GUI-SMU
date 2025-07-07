@@ -7,19 +7,18 @@
     ],
     "extraResources": [
         "dist-electron/preload.cjs",
-        "node_modules/serialport/**/*",
-        "node_modules/exceljs/**/*",
         "backend/**/*"
-    ],
-    "asarUnpack": [
-        "node_modules/serialport/**/*",
-        "node_modules/exceljs/**/*"
     ],
     "icon": "public/icon.ico",
     "npmRebuild": false,
     "nodeGypRebuild": false,
     "mac": {
         "target": "dmg",
+        "extraResources": [
+            "node_modules/serialport/**/*",
+            "node_modules/exceljs/**/*",
+            "backend/**/*"
+        ],
         "asarUnpack": [
             "node_modules/serialport/**/*",
             "node_modules/exceljs/**/*"
@@ -28,6 +27,11 @@
     "linux": {
         "target": "AppImage",
         "category": "Utility",
+        "extraResources": [
+            "node_modules/serialport/**/*",
+            "node_modules/exceljs/**/*",
+            "backend/**/*"
+        ],
         "asarUnpack": [
             "node_modules/serialport/**/*",
             "node_modules/exceljs/**/*"
@@ -37,6 +41,11 @@
         "target": ["portable", "msi"],
         "sign": false,
         "verifyUpdateCodeSignature": false,
+        "extraResources": [
+            "node_modules/serialport/**/*",
+            "node_modules/exceljs/**/*",
+            "backend/**/*"
+        ],
         "asarUnpack": [
             "node_modules/serialport/**/*",
             "node_modules/exceljs/**/*"
