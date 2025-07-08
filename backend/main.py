@@ -24,7 +24,7 @@ class DataCommand(BaseModel):
     command: Optional[str] = None
     port: Optional[str] = None
     timeout: Optional[int] = 20 #minutes
-    delay: Optional[int] = 0.1
+    delay: Optional[int] = 10
     isBothWays: Optional[bool] = False
     is4Wire: Optional[bool] = False
     isVoltSrc: Optional[bool] = True
@@ -136,7 +136,7 @@ class MeasureProcedure(Procedure):
 
     id = IntegerParameter('Process id', default=999)
     iterations = IntegerParameter('Loop Iterations', default=100)
-    delay = FloatParameter('Delay Time', units='s', default=0.1)
+    delay = FloatParameter('Delay Time', units='ms', default=10)
     port = Parameter("port", "")
     DATA_COLUMNS = ['Voltage', 'Current']
     progress = FloatParameter('Progress %', units='%', default=0.0)
@@ -217,7 +217,7 @@ class MeasureProcedure(Procedure):
         for i, setpoint in enumerate(sweep_array):
         
             self.meter.source_value = setpoint
-            sleep(self.delay)
+            sleep(self.delay/1000)
 
             if self.source_type == "VOLT":
                 voltage = setpoint
