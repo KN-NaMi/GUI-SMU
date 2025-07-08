@@ -41,3 +41,8 @@ backend/python-embedded/get-pip.py
 !backend/python-embedded/python313._pth
 !backend/python-embedded/_*.pyd
 !backend/python-embedded/LICENSE.txt
+python/
+release/
+resources/
+build/
+
