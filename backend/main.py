@@ -10,7 +10,7 @@ import numpy as np
 from pymeasure.log import console_log
 from pymeasure.experiment import Procedure, IntegerParameter, Parameter, FloatParameter, ListParameter
 from pymeasure.experiment import Results, Worker
-from pymeasure.instruments.keithley import Keithley2400
+from Keithley2400_adapter import Keithley2400Adapter
 
 import logging
 from logging.handlers import QueueHandler
@@ -24,6 +24,9 @@ class DataCommand(BaseModel):
     command: Optional[str] = None
     port: Optional[str] = None
     timeout: Optional[int] = 20 #minutes
+    delay: Optional[int] = 10
+    isBothWays: Optional[bool] = False
+    is4Wire: Optional[bool] = False
     isVoltSrc: Optional[bool] = True
     voltLimit: Optional[float] = None
     currLimit: Optional[float] = None
@@ -37,6 +40,9 @@ class TestDataCommand(BaseModel):
     command: Optional[str] = None
     port: Optional[str] = None
     timeout: Optional[int] = 20 #minutes
+    delay: Optional[int] = 0.1
+    isBothWays: Optional[bool] = False
+    is4Wire: Optional[bool] = False
     isVoltSrc: Optional[bool] = True
     voltLimit: Optional[float] = None
     currLimit: Optional[float] = None
@@ -107,99 +113,134 @@ class ConnectionManager:
 
 class MeasureProcedure(Procedure):
     
-    voltage_ranges = [.2, 2, 20]
-    current_ranges = [.000001, .00001, .0001, .001, .01, .1, 1]
+    def _generate_sweep_array(self, start: float, end: float, iterations: int, is_both_ways: bool):
+        """
+        Generates an array for the measurement sweep.
+        """
+        if not is_both_ways:
+            return np.linspace(start, end, iterations)
 
-    def nearest_largest_value (self, n, values):
-        return min([v for v in values if v >= n] or [None])
-
+        if iterations < 2:
+            return np.linspace(start, end, iterations)
+            
+        if iterations % 2 == 1:
+            num_up = (iterations + 1) // 2
+            sweep_up = np.linspace(start, end, num_up)
+            sweep_down = sweep_up[:-1][::-1] 
+            return np.concatenate((sweep_up, sweep_down))
+        else:
+            num_half = iterations // 2
+            sweep_up = np.linspace(start, end, num_half)
+            sweep_down = np.linspace(end, start, num_half)
+            return np.concatenate((sweep_up, sweep_down))
 
     id = IntegerParameter('Process id', default=999)
     iterations = IntegerParameter('Loop Iterations', default=100)
-    delay = FloatParameter('Delay Time', units='s', default=0.2)
+    delay = FloatParameter('Delay Time', units='ms', default=10)
     port = Parameter("port", "")
     DATA_COLUMNS = ['Voltage', 'Current']
     progress = FloatParameter('Progress %', units='%', default=0.0)
     source_type = Parameter("source type", default="VOLT")
+    is_4_wire = Parameter("measurement type", default=True)
+    is_both_ways = Parameter("measurement type", default=False)
    
     #voltage parameters
     compliance_current = FloatParameter('compliance current', units='A', default=0.03)
-    voltage_min = FloatParameter('From voltage', units='V', default=0)
-    voltage_max = FloatParameter('To voltage', units='V', default=20)
+    voltage_start = FloatParameter('From voltage', units='V', default=0)
+    voltage_end = FloatParameter('To voltage', units='V', default=1)
     
     #current parameters
     compliance_voltage = FloatParameter('compliance voltage', units='V', default=5)
-    current_min = FloatParameter('From current', units='A', default=0)
-    current_max = FloatParameter('To current', units='A', default=0.02)
+    current_start = FloatParameter('From current', units='A', default=0)
+    current_end = FloatParameter('To current', units='A', default=0.02)
     
     def startup(self):
         manager.add_queue("starting setup")
-        log.info("Setting up connection to SMU")
-        self.meter = Keithley2400(self.port)
+        log.info(f"Connecting to SMU at {self.port}")
+        
+        self.meter = Keithley2400Adapter(self.port)
         log.info("Setting up parameters")
+        
         if self.source_type == "VOLT":
-            self.meter.apply_voltage()  
-            self.meter.measure_current()            
-            self.meter.source_voltage_range =  self.nearest_largest_value(self.voltage_max, self.voltage_ranges)  
-            self.meter.compliance_current = self.compliance_current
-            self.voltages = np.linspace(self.voltage_min, self.voltage_max, self.iterations)
-            print(self.voltages)
+            voltage_sweep_limit = max(abs(self.voltage_start), abs(self.voltage_end))
+            
+            self.meter.configure_voltage_source(
+                voltage_limit=voltage_sweep_limit, 
+                compliance_current=self.compliance_current, 
+                is_4_wire=self.is_4_wire
+            )
+            
+            self.voltages = self._generate_sweep_array(
+                self.voltage_start, self.voltage_end, self.iterations, self.is_both_ways
+            )
+            
             self.voltages = [float(x) for x in self.voltages]
-            print(self.voltages)
+            log.info(f"Generated {len(self.voltages)} voltage points for sweep.")
             self.meter.enable_source()
-            manager.add_queue("setup completed")
+            
         elif self.source_type == "CURR":
-            self.meter.apply_current()  
-            self.meter.measure_voltage()            
-            self.meter.source_current_range =  self.nearest_largest_value(self.current_max, self.current_ranges)  
-            self.meter.compliance_voltage = self.compliance_voltage
-            self.currents = np.linspace(self.current_min, self.current_max, self.iterations)
-            print(self.currents)
+            current_sweep_limit = max(abs(self.current_start), abs(self.current_end))
+            
+            self.meter.configure_current_source(
+                current_limit=current_sweep_limit,
+                compliance_voltage=self.compliance_voltage,
+                is_4_wire=self.is_4_wire
+            )
+            
+            self.currents = self._generate_sweep_array(
+                self.current_start, self.current_end, self.iterations, self.is_both_ways
+            )
+            
             self.currents = [float(x) for x in self.currents]
-            print(self.currents)
+
+            log.info(f"Generated {len(self.currents)} current points for sweep.")
             self.meter.enable_source()
-            manager.add_queue("setup completed")
+            
         else:
             manager.add_queue("Pass correct parameters and try again")
+        
+        manager.add_queue("setup completed")
         
     def execute(self):
         
         if self.source_type == "VOLT":
             log.info("Starting to measure in VOLT mode")
-            for v, voltage in enumerate(self.voltages):
-                
-                self.meter.source_voltage = voltage
-                data = ReturnWebSocket(step=v, current=self.meter.current, voltage=voltage)
-                manager.add_queue(data.model_dump_json())
-                self.progress = 100. * v / self.iterations
-                self.emit('results', data.model_dump())
-                self.emit('progress', self.progress)
-                if self.should_stop():
-                    log.warning("Catch stop command in procedure")
-                    break
+            sweep_array = self.voltages
         elif self.source_type == "CURR":
             log.info("Starting to measure in CURR mode")
-            for c, current in enumerate(self.currents):
-                
-                self.meter.source_current = current
-                data = ReturnWebSocket(step=c, current=self.meter.current, voltage=voltage)
-                manager.add_queue(data.model_dump_json())
-                self.progress = 100. * c / self.iterations
-                self.emit('results', data.model_dump())
-                self.emit('progress', self.progress)
-                if self.should_stop():
-                    log.warning("Catch stop command in procedure")
-                    break
+            sweep_array = self.currents
         else:
-            manager.add_queue("Pass correct parameters and try again")
+            log.error(f"Invalid source_type '{self.source_type}' in execute method.")
+            manager.add_queue("Invalid parameters, stopping execution.")
+            return
+
+        for i, setpoint in enumerate(sweep_array):
+        
+            self.meter.source_value = setpoint
+            sleep(self.delay/1000)
+
+            if self.source_type == "VOLT":
+                voltage = setpoint
+                current = self.meter.measured_value
+            else:
+                current = setpoint
+                voltage = self.meter.measured_value
+
+            data = ReturnWebSocket(step=i, current=current, voltage=voltage)
+            manager.add_queue(data.model_dump_json())
+            self.progress = 100. * (i + 1) / self.iterations
+            
+            self.emit('results', data.model_dump())
+            self.emit('progress', self.progress)
+
+            if self.should_stop():
+                log.warning("Catch stop command in procedure, ending measurement.")
+                break
             
 
     def shutdown(self):
-        self.meter.beep(3600, 1)
-        time.sleep(0.2)
-        self.meter.beep(3600, 0.5)
         self.meter.shutdown()
-        self.meter.adapter.close()
+        self.meter.close()
         manager.add_queue("Finished")
         log.info("Finished")
         
@@ -209,10 +250,12 @@ class MeasureTestWebSocket(Procedure):
 
     id = IntegerParameter('Process id', default=999)
     iterations = IntegerParameter('Loop Iterations', default=100)
-    delay = FloatParameter('Delay Time', units='s', default=0.2)
+    delay = FloatParameter('Delay Time', units='s', default=0.1)
     port = Parameter("port", "")
     DATA_COLUMNS = ['Voltage', 'Current']
     progress = FloatParameter('Progress %', units='%', default=0.0)
+    is_4_wire = Parameter("measurement type", default=True)
+    is_both_ways = Parameter("measurement type", default=False)
     full_results = []
     test_data = []
 
@@ -328,18 +371,19 @@ def start_job(command: DataCommand, job_id: int):
     procedure = MeasureProcedure(port=f"ASRL{command.port}::INSTR", id=job_id)
     procedure.source_type= "VOLT" if command.isVoltSrc else "CURR"
     procedure.iterations = command.iterations
-    procedure.delay = 0.1
-    print(procedure.port)
+    procedure.delay = command.delay
+    procedure.is_4_wire = command.is4Wire
+    procedure.is_both_ways = command.isBothWays
     if command.isVoltSrc:
         #voltage measure parametres
         procedure.compliance_current = command.currLimit
-        procedure.voltage_min = command.uMin
-        procedure.voltage_max = command.uMax
+        procedure.voltage_start = command.uMin
+        procedure.voltage_end = command.uMax
     else:
         #current measure paramters
         procedure.compliance_voltage = command.voltLimit
-        procedure.current_min = command.iMin
-        procedure.current_max = command.iMax
+        procedure.current_start = command.iMin
+        procedure.current_end = command.iMax
     log.info(f"Set up Procedure with {procedure.iterations} iterations")
     
     results = Results(procedure, filename)
@@ -373,7 +417,9 @@ def test_job(command: TestDataCommand, job_id: int):
 
     procedure = MeasureTestWebSocket(port=f"ASRL{command.port}::INSTR", id=job_id, source_type="CURR")
     procedure.iterations = command.iterations
-    procedure.delay = 0.1
+    procedure.delay = command.delay
+    procedure.is_4_wire = command.is4Wire
+    procedure.is_both_ways = command.isBothWays
     procedure.test_data = command.test_values
     log.info(f"Set up Procedure with {procedure.iterations} iterations")
     
@@ -410,4 +456,4 @@ def _reset_root_logger_handlers(logger_to_reset: logging.Logger):
     
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", reload=True)
+    uvicorn.run(app, host="127.0.0.1", port=8000)
