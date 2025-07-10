@@ -170,8 +170,6 @@ class MeasureProcedure(Procedure):
                 is_4_wire=self.is_4_wire
             )
             
-            print(f"Current wire configuration: {self.meter.instrument.wires}")
-            
             self.voltages = self._generate_sweep_array(
                 self.voltage_start, self.voltage_end, self.iterations, self.is_both_ways
             )
@@ -188,8 +186,6 @@ class MeasureProcedure(Procedure):
                 compliance_voltage=self.compliance_voltage,
                 is_4_wire=self.is_4_wire
             )
-            
-            print(f"Current wire configuration: {self.meter.instrument.wires}")
             
             self.currents = self._generate_sweep_array(
                 self.current_start, self.current_end, self.iterations, self.is_both_ways
