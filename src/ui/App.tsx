@@ -15,6 +15,9 @@ interface DataPoint {
 interface MeasurementConfig {
     isVoltSrc: boolean;
     iterations: number;
+    delay?: number;
+    isBothWays?: boolean;
+    is4Wire?: boolean;
     voltLimit?: number;
     currLimit?: number;
     iMax?: number;
@@ -103,6 +106,9 @@ const handleAxesChange = useCallback((newXKey: ChartAxisKey, newYKey: ChartAxisK
             command: 'start',
             port: port,
             iterations: iterations,
+            delay: config?.delay,
+            isBothWays: config?.isBothWays,
+            is4Wire: config?.is4Wire,
             isVoltSrc: config?.isVoltSrc ?? true,
             voltLimit: config?.voltLimit,
             currLimit: config?.currLimit,

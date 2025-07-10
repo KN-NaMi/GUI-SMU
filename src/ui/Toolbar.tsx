@@ -45,13 +45,13 @@ const convertValue = (value: string, elementId: string): number => {
   switch(unit) {
     case "nA": 
     case "nV":
-      return numValue * 0.000000001;
+      return numValue / 1000000000;;
     case "uA":
     case "uV":
-      return numValue * 0.000001;
+      return numValue / 1000000;
     case "mA":
     case "mV":
-      return numValue * 0.001;
+      return numValue / 1000;
     case "A":
     case "V":
       return numValue;
@@ -59,7 +59,8 @@ const convertValue = (value: string, elementId: string): number => {
     case "kV":
       return numValue * 1000;
     default:
-      return numValue;
+      return 0;
+    
   }
 };
 
@@ -102,8 +103,12 @@ const Toolbar = ({
   const [measuredValueX, setMeasuredValueX] = useState<"I" | "U">("I");
   const [measuredValueY, setMeasuredValueY] = useState<"I" | "U">("U");
   const [iterations, setIterations] = useState<string>("");
+  const [bothWays, setBothWays] = useState<boolean>(false);
+  const [fourWire, setFourWire] = useState<boolean>(false);
+  const [delay, setDelay] = useState<string>("");
   const [port, setPort] = useState<string>("");
   const [serialPorts, setSerialPorts] = useState<SerialPortInfo[]>([]);
+  
 
    // Form field states for measurement parameters
   const [currentLimit, setCurrentLimit] = useState<string>("");
@@ -112,6 +117,7 @@ const Toolbar = ({
   const [voltageLimit, setVoltageLimit] = useState<string>("");
   const [currentMax, setCurrentMax] = useState<string>("");
   const [currentMin, setCurrentMin] = useState<string>("");
+  const [uZab, setUZab] = useState<string>("");
 
   // State for alerts/popups
   const [showAlert, setShowAlert] = useState<boolean>(false);
@@ -165,16 +171,27 @@ const Toolbar = ({
 
   // Function to check if all values are valid (non-zero, non-negative)
   const checkValues = (isVoltSrc: boolean): boolean => {
+    const iterationsValue = parseInt(iterations);
+    if (isNaN(iterationsValue) || iterations.trim() === "") {
+      return false;
+    }
+
     if (isVoltSrc) {
       const currLimit = convertValue(currentLimit, "current-limiter-units");
       const vMax = parseFloat(voltageMax);
       const vMin = parseFloat(voltageMin);
+      const zabValue = parseFloat(uZab);
+
+      if(uZab.trim() !== "" && !isNaN(zabValue) && !isNaN(vMax)) {
+        if (vMax > zabValue) {
+          return false;
+        }
+      }
       
       return (
-        currLimit > 0 && 
-        !isNaN(vMax) && vMax > 0 && 
-        !isNaN(vMin) && vMin >= 0 && 
-        vMin < vMax
+        currLimit !== 0 && 
+        !isNaN(vMax) && voltageMax.trim() !== "" && 
+        !isNaN(vMin) && voltageMin.trim() !== ""
       );
     } else {
       const vLimit = convertValue(voltageLimit, "voltage-limiter-units");
@@ -182,10 +199,9 @@ const Toolbar = ({
       const iMin = parseFloat(currentMin);
       
       return (
-        vLimit > 0 && 
-        !isNaN(iMax) && iMax > 0 && 
-        !isNaN(iMin) && iMin >= 0 && 
-        iMin < iMax
+        vLimit !== 0 && 
+        !isNaN(iMax) && currentMax.trim() !== "" && 
+        !isNaN(iMin) && currentMin.trim() !== ""
       );
     }
   };
@@ -214,7 +230,6 @@ const Toolbar = ({
       console.log("Received ports:", simplePorts);
       setSerialPorts(simplePorts);
       
-      // Automatycznie wybierz pierwszy port, jeśli żaden nie jest wybrany
       if (simplePorts.length > 0 && !port) {
         const portPath = simplePorts[0].path;
         const portNum = extractPortNumber(portPath);
@@ -261,6 +276,9 @@ const Toolbar = ({
       const config = {
         isVoltSrc,
         iterations: parseInt(iterations),
+        delay: delay && delay.trim() !== "" ? parseFloat(delay) : undefined,
+        isBothWays: bothWays ? true : undefined,
+        is4Wire: fourWire ? true : undefined,
         ...(isVoltSrc 
           ? {
               currLimit: convertValue(currentLimit, "current-limiter-units"),
@@ -282,7 +300,7 @@ const Toolbar = ({
     } catch (error) {
       console.error('Error connecting or starting measurement:', error);
     }
-  }, [isMeasuring, isConnected, iterations, sourceType, currentLimit, voltageMax, voltageMin, voltageLimit, currentMax, currentMin, connect, startMeasurement, port]);
+  }, [isMeasuring, isConnected, iterations, delay, bothWays, fourWire, sourceType, currentLimit, voltageMax, voltageMin, voltageLimit, currentMax, currentMin, connect, startMeasurement, port]);
   
   // Function to stop measurement
   const handleStop = useCallback(() => {
@@ -384,7 +402,7 @@ const Toolbar = ({
                     onChange={(e) => setCurrentLimit(e.target.value)}
                   />
                   <select name="units" id="current-limiter-units">
-                    <option value="μA">μA</option>
+                    <option value="uA">μA</option>
                     <option value="mA">mA</option>
                     <option value="A">A</option>
                     <option value="kA">kA</option>
@@ -426,7 +444,7 @@ const Toolbar = ({
                     onChange={(e) => setVoltageLimit(e.target.value)}
                   />
                   <select name="units" id="voltage-limiter-units">
-                    <option value="μV">μV</option>
+                    <option value="uV">μV</option>
                     <option value="mV">mV</option>
                     <option value="V">V</option>
                     <option value="kV">kV</option>
@@ -463,8 +481,7 @@ const Toolbar = ({
                   value={iterations}
                   onChange={handleIterationsChange}
                 />
-              </div>
-          
+              </div>          
         </div>
 
         {/* Presets */}
@@ -624,6 +641,7 @@ const Toolbar = ({
               )}
             </div>
           </fieldset>
+          
           {/* Options */}
           <fieldset className='axes-options'>
             <legend>Opcje</legend>
@@ -636,6 +654,52 @@ const Toolbar = ({
           <fieldset className='series'>
             <legend>Serie</legend>
             <div className='input-label-corelation' style={{ marginTop: '5px' }}>
+              {/* Delay i U_zab w jednej linijce */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '5px' }}>
+                <label htmlFor="delay-input" style={{ fontSize: '11px' }}>Delay</label>
+                <input 
+                  type="text"
+                  id='delay-input'
+                  value={delay}
+                  onChange={(e) => setDelay(e.target.value)}
+                  placeholder="ms"
+                  style={{ width: '60px', fontSize: '11px' }}
+                />
+                <label htmlFor="u-zab-input" style={{ fontSize: '11px', marginLeft: '5px' }}>U_zab</label>
+                <input 
+                  type="text"
+                  id='u-zab-input'
+                  value={uZab}
+                  onChange={(e) => setUZab(e.target.value)}
+                  placeholder="V"
+                  style={{ width: '60px', fontSize: '11px' }}
+                />
+              </div>
+              
+              {/* Checkboxes in the middle of Serie section */}
+              <div style={{ textAlign: 'left', marginLeft: '0', paddingLeft: '0' }}>
+                <label style={{ display: 'flex', alignItems: 'center', marginBottom: '3px', justifyContent: 'flex-start' }}>
+                  <input
+                    type="checkbox"
+                    checked={bothWays}
+                    onChange={(e) => setBothWays(e.target.checked)}
+                    style={{ marginRight: '5px' }}
+                  />
+                  bothWays
+                </label>
+              </div>
+              
+              <div style={{ textAlign: 'left', marginLeft: '0', paddingLeft: '0' }}>
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}>
+                  <input
+                    type="checkbox"
+                    checked={fourWire}
+                    onChange={(e) => setFourWire(e.target.checked)}
+                    style={{ marginRight: '5px' }}
+                  />
+                  4Wire
+                </label>
+              </div>
             </div>
           </fieldset>
         </div>
