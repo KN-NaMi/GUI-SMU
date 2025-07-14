@@ -85,6 +85,23 @@ const serialPortAPI = {
     }
 };
 
+// API for port formatting
+const platformAPI = {
+    formatPortDisplay: (portPath: string): string => {
+        console.log("formatPortDisplay called with:", portPath);
+        if (process.platform === 'win32') {
+            return portPath; // COM1 zostaje COM1
+        } else if (process.platform === 'linux') {
+            const usbMatch = portPath.match(/\/dev\/ttyUSB(\d+)/);
+            if (usbMatch) return `USB${usbMatch[1]}`;
+            
+            const acmMatch = portPath.match(/\/dev\/ttyACM(\d+)/);
+            if (acmMatch) return `ACM${acmMatch[1]}`;
+        }
+        return portPath;
+    }
+};
+
 // Add new API for saving files
 const fileSystemAPI = {
     saveMeasurementData: (data: any[]) => {
@@ -94,4 +111,5 @@ const fileSystemAPI = {
 
 electron.contextBridge.exposeInMainWorld("websocket", websocketAPI);
 contextBridge.exposeInMainWorld("serialport", serialPortAPI);
+contextBridge.exposeInMainWorld("platform", platformAPI);
 contextBridge.exposeInMainWorld("fileSystem", fileSystemAPI);

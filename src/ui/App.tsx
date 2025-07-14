@@ -46,6 +46,9 @@ declare global {
                 path?: string;
             }>;
         };
+        platform: {
+            formatPortDisplay: (portPath: string) => string;
+        };
     }
 }
 

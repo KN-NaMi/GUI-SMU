@@ -6,10 +6,8 @@
         "node_modules/**/*"
     ],
     "extraResources": [
-        "dist-electron/preload.cjs",
-        "backend/**/*"
+        "dist-electron/preload.cjs"
     ],
-    "icon": "public/icon.ico",
     "npmRebuild": false,
     "nodeGypRebuild": false,
     "mac": {
@@ -17,7 +15,7 @@
         "extraResources": [
             "node_modules/serialport/**/*",
             "node_modules/exceljs/**/*",
-            "backend/**/*"
+            "backend/python-mac/**/*"
         ],
         "asarUnpack": [
             "node_modules/serialport/**/*",
@@ -30,7 +28,7 @@
         "extraResources": [
             "node_modules/serialport/**/*",
             "node_modules/exceljs/**/*",
-            "backend/**/*"
+            "backend/python-linux/**/*"
         ],
         "asarUnpack": [
             "node_modules/serialport/**/*",
@@ -41,10 +39,11 @@
         "target": ["portable", "msi"],
         "sign": false,
         "verifyUpdateCodeSignature": false,
+        "icon": "public/icon.ico",
         "extraResources": [
             "node_modules/serialport/**/*",
             "node_modules/exceljs/**/*",
-            "backend/**/*"
+            "backend/python-win//**/*"
         ],
         "asarUnpack": [
             "node_modules/serialport/**/*",

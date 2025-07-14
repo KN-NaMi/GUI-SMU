@@ -1,6 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import path from 'path';
-import { isDev } from './util.js';
+import { isDev, platformConfig } from './util.js';
 import { getPreloadPath } from './pathResolver.js';
 import * as fs from 'fs';
 import ExcelJS from 'exceljs/excel.js';
@@ -18,64 +18,66 @@ let pythonProcess: ChildProcess | null = null;
 // Function to start Python backend
 const startPythonBackend = () => {
     if (isDev()) {
-        // Development mode - nie uruchamiamy Python z Electron
-        // Backend jest uruchamiany przez npm script
-        console.log('Development mode - Python backend managed by npm');
+        console.log('Development mode');
         return;
     }
 
     // Production mode - uruchom embedded Python
     try {
-        const pythonPath = path.join(process.resourcesPath, 'backend', 'python-embedded', 'python.exe');
-        const scriptPath = path.join(process.resourcesPath, 'backend', 'main.py');
+        const backendInfo = platformConfig.getBackendPath();
+        const backendDir = path.join(process.resourcesPath, 'backend', backendInfo.dir);
+        const backendPath = path.join(backendDir, backendInfo.executable);
         
-        console.log('Starting Python backend:', pythonPath);
-        console.log('Script path:', scriptPath);
+        console.log('Starting backend:', backendPath);
         
-        // Sprawdź czy pliki istnieją
-        if (!fs.existsSync(pythonPath)) {
-            console.error('Python executable not found:', pythonPath);
-            return;
-        }
-        
-        if (!fs.existsSync(scriptPath)) {
-            console.error('Python script not found:', scriptPath);
+        if (!fs.existsSync(backendPath)) {
+            console.error('Backend executable not found:', backendPath);
             return;
         }
 
-        pythonProcess = spawn(pythonPath, [scriptPath], {
-            cwd: path.join(process.resourcesPath, 'backend'),
+        // Na Linuxie/macOS ustaw uprawnienia wykonywalne
+        if (platformConfig.isLinux || platformConfig.isMacOS) {
+            try {
+                fs.chmodSync(backendPath, '755');
+                console.log('Set executable permissions for:', backendPath);
+            } catch (error) {
+                console.warn('Could not set executable permissions:', error);
+            }
+        }
+
+        pythonProcess = spawn(backendPath, [], {
+            cwd: backendDir,
             stdio: ['pipe', 'pipe', 'pipe']
         });
 
         pythonProcess.stdout?.on('data', (data) => {
-            console.log('Python stdout:', data.toString());
+            console.log('Backend stdout:', data.toString());
         });
 
         pythonProcess.stderr?.on('data', (data) => {
-            console.error('Python stderr:', data.toString());
+            console.error('Backend stderr:', data.toString());
         });
 
         pythonProcess.on('close', (code) => {
-            console.log(`Python process exited with code ${code}`);
+            console.log(`Backend process exited with code ${code}`);
             pythonProcess = null;
         });
 
         pythonProcess.on('error', (error) => {
-            console.error('Failed to start Python process:', error);
+            console.error('Failed to start backend process:', error);
             pythonProcess = null;
         });
 
-        console.log('Python backend started successfully');
+        console.log('Backend started successfully');
     } catch (error) {
-        console.error('Error starting Python backend:', error);
+        console.error('Error starting backend:', error);
     }
 };
 
 // Function to stop Python backend
 const stopPythonBackend = () => {
     if (pythonProcess) {
-        console.log('Stopping Python backend');
+        console.log('Stopping backend');
         pythonProcess.kill();
         pythonProcess = null;
     }
@@ -101,7 +103,6 @@ app.on("ready", ()=>{
 
     // Start Python backend after window is ready
     mainWindow.webContents.once('did-finish-load', () => {
-        // Delay to ensure everything is loaded
         setTimeout(() => {
             startPythonBackend();
         }, 1000);
@@ -164,8 +165,13 @@ app.on("ready", ()=>{
     // Handler for listing serial ports
     ipcMain.handle('list-serial-ports', async () => {
         try {
-            const ports = await SerialPort.list();
-            return ports;
+            const allPorts = await SerialPort.list();
+            const filteredPorts = platformConfig.filterSerialPorts(allPorts);
+                
+            console.log(`Platform: ${process.platform}`);
+            console.log(`Found ${filteredPorts.length} relevant ports:`, filteredPorts.map(p => p.path));
+                
+            return filteredPorts;
         } catch (error) {
             console.error('Error listing serial ports:', error);
             return [];
