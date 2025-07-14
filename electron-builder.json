@@ -43,7 +43,7 @@
         "extraResources": [
             "node_modules/serialport/**/*",
             "node_modules/exceljs/**/*",
-            "backend/python-win//**/*"
+            "backend/python-win/**/*"
         ],
         "asarUnpack": [
             "node_modules/serialport/**/*",
