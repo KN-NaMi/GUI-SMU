@@ -28,7 +28,8 @@ dist-electron
 backend/__pycache__/
 backend/.venv/
 backend/process.py
-
+backend/dist
+backend/build
 
 python/
 release/
