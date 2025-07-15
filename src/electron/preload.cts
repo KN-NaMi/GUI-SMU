@@ -88,9 +88,8 @@ const serialPortAPI = {
 // API for port formatting
 const platformAPI = {
     formatPortDisplay: (portPath: string): string => {
-        console.log("formatPortDisplay called with:", portPath);
         if (process.platform === 'win32') {
-            return portPath; // COM1 zostaje COM1
+            return portPath;
         } else if (process.platform === 'linux') {
             const usbMatch = portPath.match(/\/dev\/ttyUSB(\d+)/);
             if (usbMatch) return `USB${usbMatch[1]}`;

@@ -21,8 +21,6 @@ const startPythonBackend = () => {
         console.log('Development mode');
         return;
     }
-
-    // Production mode - uruchom embedded Python
     try {
         const backendInfo = platformConfig.getBackendPath();
         const backendDir = path.join(process.resourcesPath, 'backend', backendInfo.dir);
@@ -35,7 +33,6 @@ const startPythonBackend = () => {
             return;
         }
 
-        // Na Linuxie/macOS ustaw uprawnienia wykonywalne
         if (platformConfig.isLinux || platformConfig.isMacOS) {
             try {
                 fs.chmodSync(backendPath, '755');
@@ -47,7 +44,8 @@ const startPythonBackend = () => {
 
         pythonProcess = spawn(backendPath, [], {
             cwd: backendDir,
-            stdio: ['pipe', 'pipe', 'pipe']
+            stdio: ['pipe', 'pipe', 'pipe'],
+            detached: false
         });
 
         pythonProcess.stdout?.on('data', (data) => {
@@ -78,7 +76,27 @@ const startPythonBackend = () => {
 const stopPythonBackend = () => {
     if (pythonProcess) {
         console.log('Stopping backend');
-        pythonProcess.kill();
+
+        if (process.platform === 'win32') {
+            try {
+                if (pythonProcess.pid) {
+                    spawn('taskkill', ['/pid', pythonProcess.pid.toString(), '/f', '/t']);
+                }
+            } catch (error) {
+                console.error('Error killing process with taskkill:', error);
+                pythonProcess.kill('SIGTERM');
+            }
+        } else {
+            pythonProcess.kill('SIGTERM');
+            
+            setTimeout(() => {
+                if (pythonProcess && !pythonProcess.killed) {
+                    console.log('Force killing backend with SIGKILL');
+                    pythonProcess.kill('SIGKILL');
+                }
+            }, 2000);
+        }
+        
         pythonProcess = null;
     }
 };
@@ -106,6 +124,11 @@ app.on("ready", ()=>{
         setTimeout(() => {
             startPythonBackend();
         }, 1000);
+    });
+
+    mainWindow.on('close', () => {
+        console.log('Main window closing, stopping backend...');
+        stopPythonBackend();
     });
 
     // IPC handler for saving measurement data
@@ -179,14 +202,30 @@ app.on("ready", ()=>{
     });
 });
 
-// Clean up on app quit
-app.on('before-quit', () => {
+app.on('before-quit', (event) => {
+    console.log('App before-quit event');
+    if (pythonProcess && !pythonProcess.killed) {
+        event.preventDefault();
+        stopPythonBackend();
+        
+        setTimeout(() => {
+            app.quit();
+        }, 1000);
+    }
+});
+
+app.on('will-quit', () => {
+    console.log('App will-quit event');
     stopPythonBackend();
 });
 
 app.on('window-all-closed', () => {
+    console.log('All windows closed');
     stopPythonBackend();
-    if (process.platform !== 'darwin') {
-        app.quit();
-    }
+    
+    setTimeout(() => {
+        if (process.platform !== 'darwin') {
+            app.quit();
+        }
+    }, 500);
 });
