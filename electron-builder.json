@@ -1,57 +1,56 @@
 {
-    "appId": "com.j-naumowicz.electron-course",
-    "files": [
-        "dist-electron",
-        "dist-react",
-        "node_modules/**/*"
-    ],
+  "appId": "pl.edu.pwr.kn-nami.smu-gui",
+  "files": [
+    "dist-electron",
+    "dist-react",
+    "node_modules/**/*"
+  ],
+  "extraResources": [
+    "dist-electron/preload.cjs"
+  ],
+  "npmRebuild": false,
+  "nodeGypRebuild": false,
+  "mac": {
+    "target": "dmg",
     "extraResources": [
-        "dist-electron/preload.cjs",
-        "backend/**/*"
+      "node_modules/serialport/**/*",
+      "node_modules/exceljs/**/*",
+      "backend/python-mac/**/*"
     ],
+    "asarUnpack": [
+      "node_modules/serialport/**/*",
+      "node_modules/exceljs/**/*"
+    ]
+  },
+  "linux": {
+    "target": "AppImage",
+    "category": "Utility",
+    "extraResources": [
+      "node_modules/serialport/**/*",
+      "node_modules/exceljs/**/*",
+      "backend/python-linux/**/*"
+    ],
+    "asarUnpack": [
+      "node_modules/serialport/**/*",
+      "node_modules/exceljs/**/*"
+    ]
+  },
+  "win": {
+    "target": [ "portable", "msi" ],
+    "sign": false,
+    "verifyUpdateCodeSignature": false,
     "icon": "public/icon.ico",
-    "npmRebuild": false,
-    "nodeGypRebuild": false,
-    "mac": {
-        "target": "dmg",
-        "extraResources": [
-            "node_modules/serialport/**/*",
-            "node_modules/exceljs/**/*",
-            "backend/**/*"
-        ],
-        "asarUnpack": [
-            "node_modules/serialport/**/*",
-            "node_modules/exceljs/**/*"
-        ]
-    },
-    "linux": {
-        "target": "AppImage",
-        "category": "Utility",
-        "extraResources": [
-            "node_modules/serialport/**/*",
-            "node_modules/exceljs/**/*",
-            "backend/**/*"
-        ],
-        "asarUnpack": [
-            "node_modules/serialport/**/*",
-            "node_modules/exceljs/**/*"
-        ]
-    },
-    "win": {
-        "target": ["portable", "msi"],
-        "sign": false,
-        "verifyUpdateCodeSignature": false,
-        "extraResources": [
-            "node_modules/serialport/**/*",
-            "node_modules/exceljs/**/*",
-            "backend/**/*"
-        ],
-        "asarUnpack": [
-            "node_modules/serialport/**/*",
-            "node_modules/exceljs/**/*"
-        ],
-        "artifactName": "${productName}-Setup-${version}.${ext}",
-        "publisherName": "KN NaMi",
-        "requestedExecutionLevel": "asInvoker"
-    }
+    "extraResources": [
+      "node_modules/serialport/**/*",
+      "node_modules/exceljs/**/*",
+      "backend/python-win/**/*"
+    ],
+    "asarUnpack": [
+      "node_modules/serialport/**/*",
+      "node_modules/exceljs/**/*"
+    ],
+    "artifactName": "${productName}-setup-${version}.${ext}",
+    "publisherName": "KN NaMi",
+    "requestedExecutionLevel": "asInvoker"
+  }
 }

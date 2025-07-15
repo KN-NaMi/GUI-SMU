@@ -66,14 +66,15 @@ const convertValue = (value: string, elementId: string): number => {
 
 // Function to extract port number from port path
 const extractPortNumber = (portPath: string): string => {
+  // Windows: COM1 -> "1"
   const match = portPath.match(/COM(\d+)/i);
   if (match && match[1]) {
     return match[1];
   }
 
-  const usbMatch = portPath.match(/ttyUSB(\d+)/i);
-  if (usbMatch && usbMatch[1]) {
-    return usbMatch[1];
+  // Linux: /dev/ttyUSB0 -> "/dev/ttyUSB0" (pełna ścieżka)
+  if (portPath.startsWith('/dev/')) {
+    return portPath;
   }
 
   return portPath;
@@ -220,6 +221,14 @@ const Toolbar = ({
     try {
       const allPorts = await window.serialport.listPorts();
       const simplePorts = allPorts.map((port: { path: string }) => ({ path: port.path }));
+
+      console.log("window.platform:", window.platform); // DODAJ TO
+      console.log("formatPortDisplay function:", window.platform?.formatPortDisplay); // DODAJ TO
+      
+      if (simplePorts.length > 0) {
+        const testPath = simplePorts[0].path;
+        console.log("Test format:", window.platform?.formatPortDisplay?.(testPath)); // DODAJ TO
+      }
       
       if (!simplePorts || simplePorts.length === 0) {
         console.log("No COM ports found");
@@ -511,7 +520,7 @@ const Toolbar = ({
               {serialPorts.length > 0 ? (
                 serialPorts.map((portInfo, index) => (
                   <option key={index} value={portInfo.path}>
-                    {portInfo.path}
+                    {window.platform?.formatPortDisplay(portInfo.path) || portInfo.path}
                   </option>
                 ))
               ) : (

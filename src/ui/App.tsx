@@ -46,6 +46,9 @@ declare global {
                 path?: string;
             }>;
         };
+        platform: {
+            formatPortDisplay: (portPath: string) => string;
+        };
     }
 }
 
@@ -133,6 +136,9 @@ const handleAxesChange = useCallback((newXKey: ChartAxisKey, newYKey: ChartAxisK
                 command: 'stop',
                 port: null,
                 iterations: null,
+                delay: null,
+                isBothWays: null,
+                is4Wire: null,
                 isVoltSrc: null,
                 voltLimit: null,
                 currLimit: null,
