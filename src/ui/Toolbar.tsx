@@ -554,9 +554,14 @@ const Toolbar = ({
                     borderRadius: '6px',
                     marginLeft: '35px'
                   }}
-                  onClick={() => {
-                    console.log("Camera clicked");
-                  }}
+                  onClick={async () => {
+                    try {
+                        await window.camera.openWindow();
+                        console.log("Camera window opened");
+                      } catch (error) {
+                        console.error("Error opening camera window:", error);
+                      }
+                    }}
                 >
                   <IconCamera size={16} />
                 </Button>
