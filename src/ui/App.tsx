@@ -3,6 +3,7 @@ import './App.css'
 import ScatterChart from "./ScatterChart";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { scaleChartData, CurrentUnit, VoltageUnit } from './ScaleChartData';
+import CameraWindow from "./CameraWindow";
 
 // Interface for measurement data points
 interface DataPoint {
@@ -49,6 +50,9 @@ declare global {
         platform: {
             formatPortDisplay: (portPath: string) => string;
         };
+        camera: {
+            openWindow: () => Promise<void>;
+        };
     }
 }
 
@@ -71,7 +75,7 @@ const App: React.FC = () => {
         setVoltageUnit(unit);
     };
     
-const handleAxesChange = useCallback((newXKey: ChartAxisKey, newYKey: ChartAxisKey) => {
+    const handleAxesChange = useCallback((newXKey: ChartAxisKey, newYKey: ChartAxisKey) => {
         setXAxisDataKey(newXKey);
         setYAxisDataKey(newYKey);
     }, []);
@@ -229,6 +233,22 @@ const handleAxesChange = useCallback((newXKey: ChartAxisKey, newYKey: ChartAxisK
             console.log("Cleaning up WebSocket message handler");
         };
     }, [handleWebSocketMessage]);
+
+    // Camera window detection based on URL parameter
+    const [showCamera, setShowCamera] = useState(false);
+
+    // Check URL parameter to determine if this should show camera interface
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('window') === 'camera') {
+            setShowCamera(true);
+        }
+    }, []);
+
+    // Render camera window interface if camera parameter detected
+    if (showCamera) {
+    return <CameraWindow />;
+    }
 
     return (
         <div className="app-container">

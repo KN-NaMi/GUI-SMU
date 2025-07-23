@@ -108,7 +108,15 @@ const fileSystemAPI = {
     }
 };
 
+// API camera
+const cameraAPI = {
+    openWindow: async (): Promise<void> => {
+        return await ipcRenderer.invoke('open-camera-window');
+    }
+};
+
 electron.contextBridge.exposeInMainWorld("websocket", websocketAPI);
 contextBridge.exposeInMainWorld("serialport", serialPortAPI);
 contextBridge.exposeInMainWorld("platform", platformAPI);
 contextBridge.exposeInMainWorld("fileSystem", fileSystemAPI);
+contextBridge.exposeInMainWorld("camera", cameraAPI);

@@ -40,7 +40,7 @@ const ScatterChart = ({
   
     const width = 1900 * scale;
     const height = 790 * scale;
-    const margin = { top: 20, right: 20, bottom: 50, left: 60 };
+    const margin = { top: 20, right: 20, bottom: 50, left: 70 };
     const symlogConstant = 1;
 
     // Mapping axis keys to display names
@@ -132,7 +132,11 @@ const ScatterChart = ({
       
       // Linear
       if (type === "linear") {
-        return value === 0 ? "0" : d3.format(".1f")(value);
+        if (Math.abs(value) >= 1000 || (Math.abs(value) > 0 && Math.abs(value) < 0.001)) { // Dodano warunek dla bardzo małych liczb
+          return d3.format(".1e")(value);
+        }
+
+        return value === 0 ? "0" : d3.format(".2f")(value);
       }
 
       // SymLog
@@ -317,7 +321,7 @@ const ScatterChart = ({
       .attr("y", height - 10)
       .attr("text-anchor", "middle")
       .attr("font-size", `${18 * scale}px`)
-      .attr("fill", "white")
+      .attr("fill", "black")
       .text(axisLabels[xAxisDataKey]);
       
     svg.append("text")
@@ -326,7 +330,7 @@ const ScatterChart = ({
       .attr("y", 15)
       .attr("text-anchor", "middle")
       .attr("font-size", `${18 * scale}px`)
-      .attr("fill", "white")
+      .attr("fill", "black")
       .text(axisLabels[yAxisDataKey]);
     };
 
@@ -347,7 +351,7 @@ const ScatterChart = ({
     drawGrid();
     drawAxes();
     drawPoints();
-    svg.selectAll(".domain").remove();
+    //svg.selectAll(".domain").remove();
 
   }, [scale, data, xScaleType, yScaleType, xAxisDataKey, yAxisDataKey, selectedCurrentUnit, selectedVoltageUnit,]);
   
