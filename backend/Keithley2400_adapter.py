@@ -29,6 +29,7 @@ class Keithley2400Adapter(SMUInterface):
         self.instrument.compliance_current = compliance_current
         self.instrument.wires = 4 if is_4_wire else 2
         self._source_type = "VOLT"
+        print(f"Current wire configuration: {self.instrument.wires}")
         
     def configure_current_source(self, current_limit: float, compliance_voltage: float, is_4_wire: bool):
         """Configures the SMU to source current and measure voltage."""
@@ -38,6 +39,7 @@ class Keithley2400Adapter(SMUInterface):
         self.instrument.compliance_voltage = compliance_voltage
         self.instrument.wires = 4 if is_4_wire else 2
         self._source_type = "CURR"
+        print(f"Current wire configuration: {self.instrument.wires}")
 
     @property
     def source_value(self):
