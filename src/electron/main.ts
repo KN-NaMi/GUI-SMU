@@ -22,6 +22,7 @@ const startPythonBackend = () => {
         return;
     }
     try {
+        // Get platform-specific backend executable path
         const backendInfo = platformConfig.getBackendPath();
         const backendDir = path.join(process.resourcesPath, 'backend', backendInfo.dir);
         const backendPath = path.join(backendDir, backendInfo.executable);
@@ -42,12 +43,14 @@ const startPythonBackend = () => {
             }
         }
 
+        // Spawn the backend process with stdio pipes
         pythonProcess = spawn(backendPath, [], {
             cwd: backendDir,
             stdio: ['pipe', 'pipe', 'pipe'],
             detached: false
         });
 
+        // Handle backend process output and lifecycle events
         pythonProcess.stdout?.on('data', (data) => {
             console.log('Backend stdout:', data.toString());
         });
@@ -78,6 +81,7 @@ const stopPythonBackend = () => {
         console.log('Stopping backend');
 
         if (process.platform === 'win32') {
+            // Windows: Use taskkill for proper process tree termination
             try {
                 if (pythonProcess.pid) {
                     spawn('taskkill', ['/pid', pythonProcess.pid.toString(), '/f', '/t']);
@@ -87,6 +91,7 @@ const stopPythonBackend = () => {
                 pythonProcess.kill('SIGTERM');
             }
         } else {
+            // Unix-like: SIGTERM then SIGKILL if needed
             pythonProcess.kill('SIGTERM');
             
             setTimeout(() => {
@@ -101,7 +106,46 @@ const stopPythonBackend = () => {
     }
 };
 
+let cameraWindow: BrowserWindow | null = null;
+
+// Creates separate always-on-top camera window for image capture functionality
+const createCameraWindow = () => {
+    // Reuse existing window if available
+    if (cameraWindow && !cameraWindow.isDestroyed()) {
+        cameraWindow.focus();
+        return;
+    }
+
+    // Create new camera window with always-on-top behavior
+    cameraWindow = new BrowserWindow({
+        width: 800,
+        height: 600,
+        title: 'Camera Window',
+        alwaysOnTop: true,
+        icon: path.join(app.getAppPath(), 'public', process.platform === 'win32' ? 'icon.ico' : 'icon.ico'),
+        webPreferences: {
+            preload: getPreloadPath(),
+        },
+    });
+
+    // Load camera interface with special query parameter
+    if (isDev()) {
+        cameraWindow.loadURL('http://localhost:5123/?window=camera');
+    } else {
+        cameraWindow.loadFile(path.join(app.getAppPath(), '/dist-react/index.html'), {
+            query: { window: 'camera' }
+        });
+    }
+
+    // Clean up reference when window closes
+    cameraWindow.on('closed', () => {
+        cameraWindow = null;
+    });
+};
+
+// Application ready event - creates main window and sets up IPC handlers
 app.on("ready", ()=>{
+    // Create maximized main application window
     const mainWindow = new BrowserWindow({
         width: 1920,
         height: 1080,
@@ -113,6 +157,7 @@ app.on("ready", ()=>{
 
     mainWindow.maximize();
 
+    // Load main interface based on environment
     if (isDev()) {
         mainWindow.loadURL('http://localhost:5123');
     } else {
@@ -126,20 +171,21 @@ app.on("ready", ()=>{
         }, 1000);
     });
 
+    // Clean shutdown when main window closes
     mainWindow.on('close', () => {
         console.log('Main window closing, stopping backend...');
         stopPythonBackend();
     });
 
-    // IPC handler for saving measurement data
+    // IPC Handler: Save measurement data
     ipcMain.handle('save-measurement-data', async (_, data: DataPoint[]) => {
         // Show save dialog
         const { canceled, filePath } = await dialog.showSaveDialog({
             title: 'Save Measurements:',
             defaultPath: path.join(app.getPath('desktop'), 'measurements.csv'), 
             filters: [
-                { name: 'Pliki CSV', extensions: ['csv'] },
-                { name: 'Pliki Excel', extensions: ['xlsx'] },
+                { name: 'CSV Files', extensions: ['csv'] },
+                { name: 'Excel Files', extensions: ['xlsx'] },
             ],
             properties: ['createDirectory']
         });
@@ -185,7 +231,7 @@ app.on("ready", ()=>{
         }
     });
      
-    // Handler for listing serial ports
+    // IPC Handler: List available serial ports filtered by platform
     ipcMain.handle('list-serial-ports', async () => {
         try {
             const allPorts = await SerialPort.list();
@@ -200,8 +246,14 @@ app.on("ready", ()=>{
             return [];
         }
     });
+
+    // IPC Handler: Open camera window for image capture
+    ipcMain.handle('open-camera-window', () => {
+        createCameraWindow();
+    });
 });
 
+// Handle app quit events - ensure proper cleanup of backend process
 app.on('before-quit', (event) => {
     console.log('App before-quit event');
     if (pythonProcess && !pythonProcess.killed) {

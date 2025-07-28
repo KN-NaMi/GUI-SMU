@@ -1,8 +1,11 @@
 import { useScale } from '../electron/useScale';
 import './Toolbar.css'
-import React, { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { flushSync } from 'react-dom';
 import { DataPoint } from './ScatterChart';
 import { CurrentUnit, VoltageUnit } from './ScaleChartData'
+import { Button, Select, NumberInput, Menu, Checkbox, Tabs, TextInput } from '@mantine/core';
+import { IconPlayerPlayFilled, IconPlayerStopFilled, IconDeviceFloppy, IconRefresh, IconSettings, IconCamera } from '@tabler/icons-react';
 
 export type ChartAxisKey = 'current' | 'voltage' | 'step';
 
@@ -55,9 +58,6 @@ const convertValue = (value: string, elementId: string): number => {
     case "A":
     case "V":
       return numValue;
-    case "kA":
-    case "kV":
-      return numValue * 1000;
     default:
       return 0;
     
@@ -66,13 +66,12 @@ const convertValue = (value: string, elementId: string): number => {
 
 // Function to extract port number from port path
 const extractPortNumber = (portPath: string): string => {
-  // Windows: COM1 -> "1"
   const match = portPath.match(/COM(\d+)/i);
   if (match && match[1]) {
     return match[1];
   }
 
-  // Linux: /dev/ttyUSB0 -> "/dev/ttyUSB0" (pełna ścieżka)
+  // Linux:
   if (portPath.startsWith('/dev/')) {
     return portPath;
   }
@@ -101,8 +100,8 @@ const Toolbar = ({
 
   // Basic measurement configuration states
   const [sourceType, setSourceType] = useState<string>("voltage-src");
-  const [measuredValueX, setMeasuredValueX] = useState<"I" | "U">("I");
-  const [measuredValueY, setMeasuredValueY] = useState<"I" | "U">("U");
+  const [measuredValueX, setMeasuredValueX] = useState<"I" | "U">("U");
+  const [measuredValueY, setMeasuredValueY] = useState<"I" | "U">("I");
   const [iterations, setIterations] = useState<string>("");
   const [bothWays, setBothWays] = useState<boolean>(false);
   const [fourWire, setFourWire] = useState<boolean>(false);
@@ -118,7 +117,10 @@ const Toolbar = ({
   const [voltageLimit, setVoltageLimit] = useState<string>("");
   const [currentMax, setCurrentMax] = useState<string>("");
   const [currentMin, setCurrentMin] = useState<string>("");
-  const [uZab, setUZab] = useState<string>("");
+  const [uMinSafety, setUminSafety] = useState<string>("");
+  const [uMaxSafety, setUmaxSafety] = useState<string>("");
+  const [iMinSafety, setIminSafety] = useState<string>("");
+  const [iMaxSafety, setImaxSafety] = useState<string>("");
 
   // State for alerts/popups
   const [showAlert, setShowAlert] = useState<boolean>(false);
@@ -134,44 +136,44 @@ const Toolbar = ({
     return value === "I" ? "current" : "voltage";
   };
 
-  const handleChangeX = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newValue = e.target.value as "I" | "U";
+  const handleChangeX = (value: string | null) => {
+    if (!value) return;
+    const newValue = value as "I" | "U";
     const newYValue = newValue === "I" ? "U" : "I";
     setMeasuredValueX(newValue);
     setMeasuredValueY(newYValue);
     onAxesChange(mapIUToDataKey(newValue), mapIUToDataKey(newYValue));
   };
 
-  const handleChangeY = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newValue = e.target.value as "I" | "U";
+  const handleChangeY = (value: string | null) => {
+    if (!value) return;
+    const newValue = value as "I" | "U";
     const newXValue = newValue === "I" ? "U" : "I";
     setMeasuredValueY(newValue);
     setMeasuredValueX(newXValue);
     onAxesChange(mapIUToDataKey(newXValue), mapIUToDataKey(newValue));
   };
 
-  const handleCurrentChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    // Sprawdzamy, czy wartość z selecta jest zgodna z naszymi typami CurrentUnit
-    onCurrentUnitChange(event.target.value as CurrentUnit);
+  const handleCurrentChange = (value: string | null) => {
+    if (!value) return;
+    onCurrentUnitChange(value as CurrentUnit);
   };
 
-  const handleVoltageChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    // Sprawdzamy, czy wartość z selecta jest zgodna z naszymi typami VoltageUnit
-    onVoltageUnitChange(event.target.value as VoltageUnit);
+  const handleVoltageChange = (value: string | null) => {
+    if (!value) return;
+    onVoltageUnitChange(value as VoltageUnit);
   };
 
-  const handleIterationsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      setIterations(e.target.value);
-  };
-
-  const handlePortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedPath = e.target.value;
+  const handlePortChange = (selectedPath: string | null) => {
+    if (!selectedPath) return;
     const portNum = extractPortNumber(selectedPath);
     setPort(portNum);
   };
 
   // Function to check if all values are valid (non-zero, non-negative)
   const checkValues = (isVoltSrc: boolean): boolean => {
+    flushSync(() => {});
+
     const iterationsValue = parseInt(iterations);
     if (isNaN(iterationsValue) || iterations.trim() === "") {
       return false;
@@ -181,11 +183,37 @@ const Toolbar = ({
       const currLimit = convertValue(currentLimit, "current-limiter-units");
       const vMax = parseFloat(voltageMax);
       const vMin = parseFloat(voltageMin);
-      const zabValue = parseFloat(uZab);
+      const zabMinValue = parseFloat(uMinSafety);
+      const zabMaxValue = parseFloat(uMaxSafety);
+      const isUminSafetyEmpty = uMinSafety.trim() === "";
+      const isUmaxSafetyEmpty = uMaxSafety.trim() === "";
 
-      if(uZab.trim() !== "" && !isNaN(zabValue) && !isNaN(vMax)) {
-        if (vMax > zabValue) {
-          return false;
+      if (isUminSafetyEmpty && isUmaxSafetyEmpty) {
+      }
+      else if (!isUminSafetyEmpty && isUmaxSafetyEmpty) {
+        if (!isNaN(zabMinValue) && !isNaN(vMin)) {
+          if (vMin < zabMinValue) { 
+            return false;
+          }
+        }
+      }
+      else if (isUminSafetyEmpty && !isUmaxSafetyEmpty) {
+        if (!isNaN(zabMaxValue) && !isNaN(vMax)) {
+          if (vMax > zabMaxValue) { 
+            return false;
+          }
+        }
+      }
+      else if (!isUminSafetyEmpty && !isUmaxSafetyEmpty) {
+        if (!isNaN(zabMinValue) && !isNaN(vMin)) {
+          if (vMin < zabMinValue) { 
+            return false;
+          }
+        }
+        if (!isNaN(zabMaxValue) && !isNaN(vMax)) {
+          if (vMax > zabMaxValue) { 
+            return false;
+          }
         }
       }
       
@@ -198,6 +226,40 @@ const Toolbar = ({
       const vLimit = convertValue(voltageLimit, "voltage-limiter-units");
       const iMax = parseFloat(currentMax);
       const iMin = parseFloat(currentMin);
+      const zabMinValue = parseFloat(iMinSafety);
+      const zabMaxValue = parseFloat(iMaxSafety);
+      const isUminSafetyEmpty = uMinSafety.trim() === "";
+      const isUmaxSafetyEmpty = uMaxSafety.trim() === "";
+
+      if (isUminSafetyEmpty && isUmaxSafetyEmpty) {
+      }
+      else if (!isUminSafetyEmpty && isUmaxSafetyEmpty) {
+        if (!isNaN(zabMinValue) && !isNaN(iMin)) {
+          if (iMin < zabMinValue) {
+            return false;
+          }
+        }
+      }
+      else if (isUminSafetyEmpty && !isUmaxSafetyEmpty) {
+        if (!isNaN(zabMaxValue) && !isNaN(iMax)) {
+          if (iMax > zabMaxValue) {
+            return false;
+          }
+        }
+      }
+      else if (!isUminSafetyEmpty && !isUmaxSafetyEmpty) {
+        if (!isNaN(zabMinValue) && !isNaN(iMin)) {
+          if (iMin < zabMinValue) {
+            return false;
+          }
+        }
+        if (!isNaN(zabMaxValue) && !isNaN(iMax)) {
+          if (iMax > zabMaxValue) {
+            return false;
+          }
+        }
+      }
+
       
       return (
         vLimit !== 0 && 
@@ -222,12 +284,12 @@ const Toolbar = ({
       const allPorts = await window.serialport.listPorts();
       const simplePorts = allPorts.map((port: { path: string }) => ({ path: port.path }));
 
-      console.log("window.platform:", window.platform); // DODAJ TO
-      console.log("formatPortDisplay function:", window.platform?.formatPortDisplay); // DODAJ TO
+      console.log("window.platform:", window.platform);
+      console.log("formatPortDisplay function:", window.platform?.formatPortDisplay);
       
       if (simplePorts.length > 0) {
         const testPath = simplePorts[0].path;
-        console.log("Test format:", window.platform?.formatPortDisplay?.(testPath)); // DODAJ TO
+        console.log("Test format:", window.platform?.formatPortDisplay?.(testPath));
       }
       
       if (!simplePorts || simplePorts.length === 0) {
@@ -335,43 +397,61 @@ const Toolbar = ({
       height: `${100/175}%`,
     }}
     >
-      <div className='first-column'>
-        <div className='start-stop-buttons'>
+      <div className='first-column' style={{ minWidth: '150px' }}>
+        <div className='start-stop-buttons' style={{ gap: '5px' }}>
           {/* start and stop buttons */}
-          <button 
-            className='start-btn'
+          <Button 
             onClick={handleStart}
-            disabled={isMeasuring}          
+            disabled={isMeasuring}
+            variant="filled"
+            color="green"
+            size="md"
+            style={{ 
+              width: '40px', 
+              height: '40px', 
+              padding: 0,
+              borderRadius: '8px'
+            }}
           >
-            <img src="/play.png" alt="play-icon" />
-          </button>
+            <IconPlayerPlayFilled size={18} />
+          </Button>
 
-          <button 
-            className='stop-btn'
+          <Button
             onClick={handleStop}
-            disabled={!isConnected}
+            // disabled={!isConnected}
+            variant="filled"
+            color="red"
+            size="md"
+            style={{ 
+              width: '40px', 
+              height: '40px', 
+              padding: 0,
+              borderRadius: '8px'
+            }}
           >
-            <img src="/stop.png" alt="stop-icon" />
-          </button>
-
-          </div>
-
-          <div className='input-label-corelation'>
-            <label htmlFor="current-voltage-src">Typ źródła</label>
-            <select 
-              id="current-voltage-src"
-              value={sourceType}
-              onChange={(e) => setSourceType(e.target.value)}
-            >
-              <option value="voltage-src">Źródło napięciowe</option>
-              <option value="current-src">Źródło prądowe</option>
-            </select>
-          </div>
+            <IconPlayerStopFilled size={18} />
+          </Button>
         </div>
 
-        {/* Alert */}
-        {showAlert && (
-          <div style={{
+        {/* Source type select */}
+        <div className='input-label-corelation'>
+          <Select 
+            label="Source type:"
+            value={sourceType}
+            onChange={(value) => setSourceType(value || "voltage-src")}
+            data={[
+              { value: 'voltage-src', label: 'Voltage source' },
+              { value: 'current-src', label: 'Current source' }
+            ]}
+            size="sm"
+            style={{ width: '145px' }}
+          />
+        </div>
+      </div>
+
+      {/* Alert */}
+      {showAlert && (
+        <div style={{
             position: 'absolute',
             top: 0,
             left: 0,
@@ -386,333 +466,549 @@ const Toolbar = ({
             alignItems: 'center',
             textAlign: 'center'
           }}>
-            <p style={{ 
-              margin: 0, 
-              fontWeight: 'bold', 
-              fontSize: '20px',
-              textShadow: '0 1px 2px rgba(0,0,0,0.8)'
-            }}>
-              {alertMessage}
-            </p>
-          </div>
+        <p style={{ 
+            margin: 0, 
+            fontWeight: 'bold', 
+            fontSize: '20px',
+            textShadow: '0 1px 2px rgba(0,0,0,0.8)'
+          }}>
+            {alertMessage}
+          </p>
+        </div>
+      )}
+
+      {/* Measurement options */}
+      <div className='input-container' style={{ display: 'block', width: '100%' }}>
+        {sourceType === "voltage-src" && (
+          <>
+            {/* Measurement options */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '15px', width: '100%' }}>
+              <NumberInput
+                label="U_min"
+                placeholder="V"
+                value={voltageMin}
+                onChange={(value) => setVoltageMin(value?.toString() || "")}
+                size="sm"
+                hideControls
+                clampBehavior="none"
+                allowLeadingZeros={true}
+                trimLeadingZeroesOnBlur={false}
+              />
+              
+              <NumberInput
+                label="U_max"
+                placeholder="V"
+                value={voltageMax}
+                onChange={(value) => setVoltageMax(value?.toString() || "")}
+                size="sm"
+                hideControls
+                clampBehavior="none"
+                allowLeadingZeros={true}
+                trimLeadingZeroesOnBlur={false}
+              />
+
+              <NumberInput
+                label="Iterations:"
+                value={iterations}
+                onChange={(value) => setIterations(value?.toString() || "")}
+                min={1}
+                size="sm"
+                hideControls
+              />
+            </div> 
+
+            {/* Measurements settings*/}
+            <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '8px', width: '100%' }}>
+              <div style={{ display: 'flex', gap: '5px', alignItems: 'end' }}>
+                <NumberInput
+                  label="Current limit"
+                  value={currentLimit}
+                  onChange={(value) => setCurrentLimit(value?.toString() || "")}
+                  size="sm"
+                  style={{ width: '120px' }}
+                  hideControls
+                  clampBehavior="none"
+                />
+                <Select
+                  id="current-limiter-units"
+                  data={[
+                    { value: 'uA', label: 'μA' },
+                    { value: 'mA', label: 'mA' },
+                    { value: 'A',  label: 'A' },
+                  ]}
+                  size="sm"
+                  style={{ width: '75px' }}
+                  defaultValue="mA"
+                  styles={{
+                    input: { width: '100%', minWidth: '10px' },
+                    root: { width: '10px' }
+                  }}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  style={{ 
+                    width: '35px', 
+                    height: '35px', 
+                    padding: 0,
+                    borderRadius: '6px',
+                    marginLeft: '35px'
+                  }}
+                  onClick={async () => {
+                    try {
+                        await window.camera.openWindow();
+                        console.log("Camera window opened");
+                      } catch (error) {
+                        console.error("Error opening camera window:", error);
+                      }
+                    }}
+                >
+                  <IconCamera size={16} />
+                </Button>
+              </div>
+            </div>
+          </>
         )}
 
-        <div className='input-container'>
-          {sourceType === "voltage-src" && (
-            <>
-              {/* Voltage source options*/}
-              <div className='input-label-corelation nw'>
-                <label htmlFor="current-limiter">Ograniczenie prądowe</label>
-                <div>
-                  <input
-                    type="text" 
-                    id='current-limiter' 
-                    value={currentLimit}
-                    onChange={(e) => setCurrentLimit(e.target.value)}
-                  />
-                  <select name="units" id="current-limiter-units">
-                    <option value="uA">μA</option>
-                    <option value="mA">mA</option>
-                    <option value="A">A</option>
-                    <option value="kA">kA</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className='input-label-corelation ne'>
-                <label htmlFor="U-max">U_max</label>
-                <input 
-                  type="text" 
-                  id='U-max'
-                  value={voltageMax}
-                  onChange={(e) => setVoltageMax(e.target.value)}
-                />
-              </div>
+        {sourceType === "current-src" && (
+          <>
+            {/* Measurement options */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '15px', width: '100%' }}>
               
-              <div className='input-label-corelation se'>
-                <label htmlFor="U-min">U_min</label>
-                <input 
-                  type="text"
-                  id='U-min'
-                  value={voltageMin}
-                  onChange={(e) => setVoltageMin(e.target.value)}
-                />
-              </div>
-            </>
-          )}
-          {sourceType === "current-src" && (
-            <>
-              {/* Current source options */}
-              <div className='input-label-corelation nw'>
-                <label htmlFor="voltage-limiter">Ograniczenie napięciowe</label>
-                <div>
-                  <input 
-                    type="text" 
-                    id='voltage-limiter' 
-                    value={voltageLimit}
-                    onChange={(e) => setVoltageLimit(e.target.value)}
-                  />
-                  <select name="units" id="voltage-limiter-units">
-                    <option value="uV">μV</option>
-                    <option value="mV">mV</option>
-                    <option value="V">V</option>
-                    <option value="kV">kV</option>
-                  </select>
-                </div>
-              </div>
+              <NumberInput
+                label="I_min"
+                placeholder="A"
+                value={currentMin}
+                onChange={(value) => setCurrentMin(value?.toString() || "")}
+                size="sm"
+                hideControls
+                clampBehavior="none"
+                allowLeadingZeros={true}
+                trimLeadingZeroesOnBlur={false}
+              />
+              
+              <NumberInput
+                label="I_max"
+                placeholder="A"
+                value={currentMax}
+                onChange={(value) => setCurrentMax(value?.toString() || "")}
+                size="sm"
+                hideControls
+                clampBehavior="none"
+                allowLeadingZeros={true}
+                trimLeadingZeroesOnBlur={false}
+              />
 
-              <div className='input-label-corelation ne'>
-                <label htmlFor="I-max">I_max</label>
-                <input
-                  type="text"
-                  id='I-max'
-                  value={currentMax}
-                  onChange={(e) => setCurrentMax(e.target.value)}
-                />
-              </div>
+              <NumberInput
+                label="Iterations:"
+                value={iterations}
+                onChange={(value) => setIterations(value?.toString() || "")}
+                min={1}
+                size="sm"
+                hideControls
+              />
+            </div> 
 
-              <div className='input-label-corelation se'>
-                <label htmlFor="I-min">I_min</label>
-                <input 
-                  type="text" 
-                  id='I-min'
-                  value={currentMin}
-                  onChange={(e) => setCurrentMin(e.target.value)}
+            {/* Measurements settings*/}
+            <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '8px', width: '100%' }}>
+              <div style={{ display: 'flex', gap: '5px', alignItems: 'end' }}>
+                <NumberInput
+                  label="Voltage limit"
+                  value={voltageLimit}
+                  onChange={(value) => setVoltageLimit(value?.toString() || "")}
+                  size="sm"
+                  style={{ width: '120px' }}
+                  hideControls
+                  clampBehavior="none"
+                />
+                <Select
+                  id="voltage-limiter-units"
+                  data={[
+                    { value: 'uV', label: 'μV' },
+                    { value: 'mV', label: 'mV' },
+                    { value: 'V', label: 'V' },
+                  ]}
+                  size="sm"
+                  style={{ width: '75px' }}
+                  defaultValue="mV"
+                  styles={{
+                    input: { width: '100%', minWidth: '10px' },
+                    root: { width: '10px' }
+                  }}
                 />
               </div>
-            </>
-          )}
-              <div className='input-label-corelation sw'>
-                <label htmlFor="how-many-measurements">Ilość punktów pomiarowych</label>
-                <input 
-                  type="text" 
-                  id='how-many-measurements'
-                  value={iterations}
-                  onChange={handleIterationsChange}
-                />
-              </div>          
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Save data and ports*/}
+      <div style={{ marginBottom: '15px', marginTop: '23px' }}>
+        <Button 
+          onClick={handleSaveData}
+          // disabled={!data || data.length === 0}
+          variant="filled"
+          size="sm"
+          rightSection={<IconDeviceFloppy size={16} />}
+          style={{
+            height: '35px',
+            borderRadius: '8px',
+            marginBottom: '10px',
+            width: '100%'
+          }}
+        >
+          Save data
+        </Button>
+
+        <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+          <Select
+            data={serialPorts.map(port => ({ value: port.path, label: port.path }))}
+            value={serialPorts.find(p => extractPortNumber(p.path) === port)?.path || null}
+            onChange={handlePortChange}
+            placeholder="No available ports"
+            size="xs"
+            style={{ flex: 1, minWidth: '100px' }}
+          />
+
+          <Button 
+            onClick={refreshSerialPorts}
+            variant="outline"
+            size="xs"
+            style={{ padding: '0 10px', height: '30px' }}
+          >
+            <IconRefresh size={12} />
+          </Button>
         </div>
 
-        {/* Presets */}
-        <fieldset className='presets'>
-          <legend>Presety</legend>
-          <button 
-            className='save-preset-btn' 
-            onClick={handleSaveData}
-            disabled={!data || data.length === 0}
-          >
-            Save data
-          </button>
-          <div className='input-label-corelation'>
-            <label htmlFor="choose-presets">COM</label>
-            <button 
-              className='load-preset-btn'
-              onClick={refreshSerialPorts}
+        <Menu shadow="md" width={200}>
+          <Menu.Target>
+            <Button 
+              variant="outline" 
+              size="xs"
+              style={{ width: '100%', marginTop: '8px' }}
+              rightSection={<IconSettings size={15} />}
             >
-              Refresh Ports
-            </button>
-            <select 
-              name="choose-presets"
-              id="choose-presets"
-              value={serialPorts.find(p => extractPortNumber(p.path) === port)?.path || ''}
-              onChange={handlePortChange}
-            >
-              {serialPorts.length > 0 ? (
-                serialPorts.map((portInfo, index) => (
-                  <option key={index} value={portInfo.path}>
-                    {window.platform?.formatPortDisplay(portInfo.path) || portInfo.path}
-                  </option>
-                ))
-              ) : (
-                <option value="">No available ports</option>
-              )}
-            </select>
-          </div>
-        </fieldset>
+              Others
+            </Button>
+          </Menu.Target>
+
+          <Menu.Dropdown>
+            <div style={{ padding: '10px' }}>
+
+              <Checkbox
+                checked={fourWire}
+                onChange={(e) => setFourWire(e.currentTarget.checked)}
+                label="4Wire"
+                size="xs"
+                style={{ marginBottom: '5px' }}
+              />
+
+              <Checkbox
+                checked={bothWays}
+                onChange={(e) => setBothWays(e.currentTarget.checked)}
+                label="Both ways"
+                size="xs"
+                style={{ marginBottom: '5px' }}
+              />
+              
+              <div style={{ marginBottom: '10px' }}>
+                <span style={{ fontSize: '12px', color: 'black', minWidth: '40px' }}>
+                  {sourceType === "voltage-src" ? "U_safety [V]:" : "I_safety [A]:"}
+                </span>
+
+                <div style={{ display: 'flex', gap: '5px' }}>
+                  <NumberInput
+                    placeholder="from:"
+                    value={sourceType === "voltage-src" ? uMinSafety : iMinSafety}
+                    onChange={(value) => sourceType === "voltage-src" ? setUminSafety(value?.toString() || "") : setIminSafety(value?.toString() || "")}
+                    size="xs"
+                    hideControls
+                    style={{ flex: 1 }}
+                  />
+
+                  <NumberInput
+                    placeholder="to:"
+                    value={sourceType === "voltage-src" ? uMaxSafety : iMaxSafety}
+                    onChange={(value) => sourceType === "voltage-src" ? setUmaxSafety(value?.toString() || "") : setImaxSafety(value?.toString() || "")}
+                    size="xs"
+                    hideControls
+                    style={{ flex: 1 }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '3px', alignItems: 'center', marginBottom: '10px' }}>
+                <span style={{ fontSize: '12px', color: 'black', minWidth: '40px' }}>Delay:</span>
+                
+                <NumberInput
+                  placeholder="ms"
+                  value={delay}
+                  onChange={(value) => setDelay(value?.toString() || "")}
+                  size="xs"
+                  hideControls
+                  style={{ flex: 1 }}
+                />
+                
+              </div>
+            </div>
+          </Menu.Dropdown>
+        </Menu>
+      </div>
 
       {/* Graph options */}
-      <fieldset className='graph-options'>
-        <legend>Wykres</legend>
-        <div className='graph-options-div'>
-          {/* X Axis */}
-          <fieldset className='x-axis'>
-            <legend>Oś X</legend>
-            <div className='x-axis-options'>
-              <div className='input-label-corelation'>
-                <label htmlFor="axis-type">Typ osi</label>
-                <select 
-                name="axis-type" 
-                id="x-type-select"
-                value={xScaleType}
-                onChange={(e) => setXScaleType(e.target.value as "linear" | "log")}
-                >
-                  <option value="linear">Liniowa</option>
-                  <option value="log">Logarytmiczna</option>
-                </select>
+      <Tabs defaultValue="axes" style={{ marginTop: '0px' }}>
+        <Tabs.List>
+          <Tabs.Tab 
+            value="axes"
+            style={{ color: 'white' }}
+          >
+            Axis Settings
+          </Tabs.Tab>
+          <Tabs.Tab 
+            value="series"
+            style={{ color: 'white' }}
+          >
+            Plot Series
+          </Tabs.Tab>
+        </Tabs.List>
+
+        <Tabs.Panel value="axes" pt="xs">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2px 1fr', gap: '8px', maxWidth: '700px' }}>
+            {/* Axis X */}
+            <div>
+              <h4 style={{ color: 'white', margin: '0 0 8px 0', fontSize: '12px' }}>Axis X:</h4>
+
+              <div style={{ display: 'flex', gap: '4px', marginBottom: '8px' }}>
+                <Select
+                  value={xScaleType}
+                  onChange={(value) => setXScaleType(value as "linear" | "log")}
+                  data={[
+                    { value: 'linear', label: 'Linear' },
+                    { value: 'log', label: 'Logarithmic' }
+                  ]}
+                  size="xs"
+                  style={{ width: '150px' }}
+                />
+
+                <Menu shadow="md" width={200}>
+                  <Menu.Target>
+                    <Button 
+                      variant="outline" 
+                      size="xs"
+                      style={{ width: '150px' }}
+                    >
+                      Range
+                    </Button>
+                  </Menu.Target>
+
+                  <Menu.Dropdown>
+                    <div style={{ padding: '10px' }}>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '10px' }}>
+                        <span style={{ fontSize: '12px', color: 'black', minWidth: '30px' }}>From:</span>
+                        <NumberInput
+                          placeholder="0"
+                          size="xs"
+                          hideControls
+                          style={{ flex: 1 }}
+                        />
+                      </div>
+                      
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '15px' }}>
+                        <span style={{ fontSize: '12px', color: 'black', minWidth: '30px' }}>To:</span>
+                        <NumberInput
+                          placeholder="100"
+                          size="xs"
+                          hideControls
+                          style={{ flex: 1 }}
+                        />
+                      </div>
+                      
+                      <Button 
+                        variant="filled" 
+                        size="xs" 
+                        style={{ width: '100%' }}
+                      >
+                        Apply
+                      </Button>
+                    </div>
+                  </Menu.Dropdown>
+                </Menu>
               </div>
-              <div className='input-label-corelation'>
-                <label htmlFor="i-u-select">Wielkość mierzona</label>
-                <select name="i-u-select"
-                value={measuredValueX} 
-                onChange={handleChangeX}>
-                  <option value="I">I</option>
-                  <option value="U">U</option>
-                </select>
-              </div>
-              <div></div>
-              {measuredValueX === "I" && (
-              <>
-                <select 
-                  name="current-axis-unit"
-                  value={selectedCurrentUnit}
-                  onChange={handleCurrentChange}
-                >
-                  <option key='nA' value="nA">nA</option>
-                  <option key='uA' value="uA">μA</option>
-                  <option key='mA' value="mA">mA</option>
-                  <option key='A' value="A">A</option>
-                  <option key='kA' value="kA">kA</option>
-                </select>
-              </>
-              )}
-              {measuredValueX === "U" && (
-              <>
-                <select
-                 name="voltage-axis-unit"
-                 value={selectedVoltageUnit}
-                 onChange={handleVoltageChange}
-                >
-                  <option key='nV' value="nV">nV</option>
-                  <option key='uV' value="uV">μV</option>
-                  <option key='mV' value="mV">mV</option>
-                  <option key='V' value="V">V</option>
-                  <option key='kV' value="kV">kV</option>
-                </select>
-              </>
-              )}
-            </div>
-          </fieldset>
-          {/* Y Axis  */}
-          <fieldset className='y-axis'>
-            <legend>Oś Y</legend>
-            <div className='y-axis-options'>
-              <div className='input-label-corelation'>
-                <label htmlFor="axis-type">Typ osi</label>
-                <select 
-                name="axis-type" 
-                id="y-type-select"
-                value={yScaleType}
-                onChange={(e) => setYScaleType(e.target.value as "linear" | "log")}
-                >
-                  <option value="linear">Liniowa</option>
-                  <option value="log">Logarytmiczna</option>
-                </select>
-              </div>
-              <div className='input-label-corelation'>
-                <label htmlFor="">Wielkość mierzona</label>
-                <select name="i-u-select" 
-                value={measuredValueY} 
-                onChange={handleChangeY}>
-                  <option value="I">I</option>
-                  <option value="U">U</option>
-                </select>
-              </div>
-              <div></div>
-              {measuredValueY === "U" && (
-                <>
-                  <select
-                    name="voltage-axis-unit"
-                    value={selectedVoltageUnit}
-                    onChange={handleVoltageChange}
-                  >
-                    <option key='nV' value="nV">nV</option>
-                    <option key='uV' value="uV">μV</option>
-                    <option key='mV' value="mV">mV</option>
-                    <option key='V' value="V">V</option>
-                    <option key='kV' value="kV">kV</option>
-                  </select>
-                </>
-              )}
-              {measuredValueY === "I" && (
-                <>
-                  <select 
-                    name="current-axis-unit"
+
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <Select
+                  value={measuredValueX}
+                  onChange={handleChangeX}
+                  data={[
+                    { value: 'U', label: 'U' },
+                    { value: 'I', label: 'I' }
+                  ]}
+                  size="xs"
+                  style={{ width: '150px' }}
+                />
+
+                {measuredValueX === "I" && (
+                  <Select
                     value={selectedCurrentUnit}
                     onChange={handleCurrentChange}
-                  >
-                    <option key='nA' value="nA">nA</option>
-                    <option key='uA' value="uA">μA</option>
-                    <option key='mA' value="mA">mA</option>
-                    <option key='A' value="A">A</option>
-                    <option key='kA' value="kA">kA</option>
-                  </select>
-                </>
-              )}
-            </div>
-          </fieldset>
-          
-          {/* Options */}
-          <fieldset className='axes-options'>
-            <legend>Opcje</legend>
-            <div className='axes-options-div'>
-              <input type="text" id='series-name' placeholder='Nazwa serii'/>
-              <button className='new-series-btn'>Nowa Seria</button>
-              <button className='delete-series-btn'>Usuń Serię</button>
-            </div>
-          </fieldset>
-          <fieldset className='series'>
-            <legend>Serie</legend>
-            <div className='input-label-corelation' style={{ marginTop: '5px' }}>
-              {/* Delay i U_zab w jednej linijce */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '5px' }}>
-                <label htmlFor="delay-input" style={{ fontSize: '11px' }}>Delay</label>
-                <input 
-                  type="text"
-                  id='delay-input'
-                  value={delay}
-                  onChange={(e) => setDelay(e.target.value)}
-                  placeholder="ms"
-                  style={{ width: '60px', fontSize: '11px' }}
-                />
-                <label htmlFor="u-zab-input" style={{ fontSize: '11px', marginLeft: '5px' }}>U_zab</label>
-                <input 
-                  type="text"
-                  id='u-zab-input'
-                  value={uZab}
-                  onChange={(e) => setUZab(e.target.value)}
-                  placeholder="V"
-                  style={{ width: '60px', fontSize: '11px' }}
-                />
-              </div>
-              
-              {/* Checkboxes in the middle of Serie section */}
-              <div style={{ textAlign: 'left', marginLeft: '0', paddingLeft: '0' }}>
-                <label style={{ display: 'flex', alignItems: 'center', marginBottom: '3px', justifyContent: 'flex-start' }}>
-                  <input
-                    type="checkbox"
-                    checked={bothWays}
-                    onChange={(e) => setBothWays(e.target.checked)}
-                    style={{ marginRight: '5px' }}
+                    data={[
+                      { value: 'nA', label: 'nA' },
+                      { value: 'uA', label: 'μA' },
+                      { value: 'mA', label: 'mA' },
+                      { value: 'A', label: 'A' },
+                    ]}
+                    size="xs"
+                    style={{ width: '150px' }}
                   />
-                  bothWays
-                </label>
-              </div>
-              
-              <div style={{ textAlign: 'left', marginLeft: '0', paddingLeft: '0' }}>
-                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}>
-                  <input
-                    type="checkbox"
-                    checked={fourWire}
-                    onChange={(e) => setFourWire(e.target.checked)}
-                    style={{ marginRight: '5px' }}
+                )}
+                
+                {measuredValueX === "U" && (
+                  <Select
+                    value={selectedVoltageUnit}
+                    onChange={handleVoltageChange}
+                    data={[
+                      { value: 'nV', label: 'nV' },
+                      { value: 'uV', label: 'μV' },
+                      { value: 'mV', label: 'mV' },
+                      { value: 'V', label: 'V' },
+                    ]}
+                    size="xs"
+                    style={{ width: '150px' }}
                   />
-                  4Wire
-                </label>
+                )}
               </div>
             </div>
-          </fieldset>
-        </div>
-      </fieldset>
+
+            {/* Separator */}
+            <div style={{ backgroundColor: 'rgba(255,255,255,0.3)', width: '2px' }}></div>
+
+            {/* Axis Y */}
+            <div>
+              <h4 style={{ color: 'white', margin: '0 0 8px 0', fontSize: '12px' }}>Axis Y:</h4>
+              
+              <div style={{ display: 'flex', gap: '4px', marginBottom: '8px' }}>
+                <Select
+                  value={yScaleType}
+                  onChange={(value) => setYScaleType(value as "linear" | "log")}
+                  data={[
+                    { value: 'linear', label: 'Linear' },
+                    { value: 'log', label: 'Logarithmic' }
+                  ]}
+                  size="xs"
+                  style={{ width: '150px' }}
+                />
+
+                <Menu shadow="md" width={200}>
+                  <Menu.Target>
+                    <Button 
+                      variant="outline" 
+                      size="xs"
+                      style={{ width: '150px' }}
+                    >
+                      Range
+                    </Button>
+                  </Menu.Target>
+
+                  <Menu.Dropdown>
+                    <div style={{ padding: '10px' }}>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '10px' }}>
+                        <span style={{ fontSize: '12px', color: 'black', minWidth: '30px' }}>From:</span>
+                        <NumberInput
+                          placeholder="0"
+                          size="xs"
+                          hideControls
+                          style={{ flex: 1 }}
+                        />
+                      </div>
+                      
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '15px' }}>
+                        <span style={{ fontSize: '12px', color: 'black', minWidth: '30px' }}>To:</span>
+                        <NumberInput
+                          placeholder="100"
+                          size="xs"
+                          hideControls
+                          style={{ flex: 1 }}
+                        />
+                      </div>
+                      
+                      <Button 
+                        variant="filled" 
+                        size="xs" 
+                        style={{ width: '100%' }}
+                      >
+                        Apply
+                      </Button>
+                    </div>
+                  </Menu.Dropdown>
+                </Menu>
+              </div>
+
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <Select
+                  value={measuredValueY}
+                  onChange={handleChangeY}
+                  data={[
+                    { value: 'U', label: 'U' },
+                    { value: 'I', label: 'I' }
+                  ]}
+                  size="xs"
+                  style={{ width: '150px' }}
+                />
+
+                {measuredValueY === "U" && (
+                  <Select
+                    value={selectedVoltageUnit}
+                    onChange={handleVoltageChange}
+                    data={[
+                      { value: 'nV', label: 'nV' },
+                      { value: 'uV', label: 'μV' },
+                      { value: 'mV', label: 'mV' },
+                      { value: 'V', label: 'V' },
+                    ]}
+                    size="xs"
+                    style={{ width: '150px' }}
+                  />
+                )}
+                
+                {measuredValueY === "I" && (
+                  <Select
+                    value={selectedCurrentUnit}
+                    onChange={handleCurrentChange}
+                    data={[
+                      { value: 'nA', label: 'nA' },
+                      { value: 'uA', label: 'μA' },
+                      { value: 'mA', label: 'mA' },
+                      { value: 'A', label: 'A' },
+                    ]}
+                    size="xs"
+                    style={{ width: '150px' }}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="series" pt="xs">
+          <div style={{ maxWidth: '300px' }}>
+            <TextInput
+              label="Series name"
+              placeholder="Enter series name"
+              size="xs"
+              style={{ marginBottom: '10px' }}
+            />
+            
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <Button variant="outline" size="xs" style={{ flex: 1 }}>
+                New Series
+              </Button>
+              <Button variant="outline" color="red" size="xs" style={{ flex: 1 }}>
+                Delete Series
+              </Button>
+            </div>
+          </div>
+        </Tabs.Panel>
+      </Tabs>
     </div>
   );
 };
