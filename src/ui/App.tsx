@@ -18,6 +18,7 @@ interface MeasurementConfig {
     iterations: number;
     delay?: number;
     isBothWays?: boolean;
+    repeats?: number;
     is4Wire?: boolean;
     voltLimit?: number;
     currLimit?: number;
@@ -115,6 +116,7 @@ const App: React.FC = () => {
             iterations: iterations,
             delay: config?.delay,
             isBothWays: config?.isBothWays,
+            repeats: config?.repeats,
             is4Wire: config?.is4Wire,
             isVoltSrc: config?.isVoltSrc ?? true,
             voltLimit: config?.voltLimit,
@@ -142,6 +144,7 @@ const App: React.FC = () => {
                 iterations: null,
                 delay: null,
                 isBothWays: null,
+                repeats: null,
                 is4Wire: null,
                 isVoltSrc: null,
                 voltLimit: null,

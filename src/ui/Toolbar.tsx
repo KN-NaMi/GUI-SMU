@@ -104,6 +104,7 @@ const Toolbar = ({
   const [measuredValueY, setMeasuredValueY] = useState<"I" | "U">("I");
   const [iterations, setIterations] = useState<string>("");
   const [bothWays, setBothWays] = useState<boolean>(false);
+  const [repeats, setRepeats] = useState<string>("");
   const [fourWire, setFourWire] = useState<boolean>(false);
   const [delay, setDelay] = useState<string>("");
   const [port, setPort] = useState<string>("");
@@ -117,12 +118,10 @@ const Toolbar = ({
   const [voltageLimit, setVoltageLimit] = useState<string>("");
   const [currentMax, setCurrentMax] = useState<string>("");
   const [currentMin, setCurrentMin] = useState<string>("");
-
   const [uMinSafety, setUminSafety] = useState<string>("");
   const [uMaxSafety, setUmaxSafety] = useState<string>("");
   const [iMinSafety, setIminSafety] = useState<string>("");
   const [iMaxSafety, setImaxSafety] = useState<string>("");
-
 
   // State for alerts/popups
   const [showAlert, setShowAlert] = useState<boolean>(false);
@@ -352,6 +351,7 @@ const Toolbar = ({
         iterations: parseInt(iterations),
         delay: delay && delay.trim() !== "" ? parseFloat(delay) : undefined,
         isBothWays: bothWays ? true : undefined,
+        repeats: repeats && repeats.trim() !== "" ? parseInt(repeats) : undefined,
         is4Wire: fourWire ? true : undefined,
         ...(isVoltSrc 
           ? {
@@ -374,7 +374,7 @@ const Toolbar = ({
     } catch (error) {
       console.error('Error connecting or starting measurement:', error);
     }
-  }, [isMeasuring, isConnected, iterations, delay, bothWays, fourWire, sourceType, currentLimit, voltageMax, voltageMin, voltageLimit, currentMax, currentMin, connect, startMeasurement, port]);
+  }, [isMeasuring, isConnected, iterations, delay, bothWays, repeats, fourWire, sourceType, currentLimit, voltageMax, voltageMin, voltageLimit, currentMax, currentMin, connect, startMeasurement, port]);
   
   // Function to stop measurement
   const handleStop = useCallback(() => {
@@ -706,13 +706,27 @@ const Toolbar = ({
                 style={{ marginBottom: '5px' }}
               />
 
-              <Checkbox
-                checked={bothWays}
-                onChange={(e) => setBothWays(e.currentTarget.checked)}
-                label="Both ways"
-                size="xs"
-                style={{ marginBottom: '5px' }}
-              />
+              <div style={{ 
+                display: 'flex', 
+                gap: '8px', 
+                alignItems: 'center'
+              }}>
+                <Checkbox
+                  checked={bothWays}
+                  onChange={(e) => setBothWays(e.currentTarget.checked)}
+                  label="Both ways"
+                  size="xs"
+                  style={{ marginBottom: '5px' }}
+                />
+                <NumberInput
+                  placeholder="repeats"
+                  value={repeats}
+                  onChange={(value) => setRepeats(value?.toString() || "")}
+                  size="xs"
+                  hideControls
+                  style={{ flex: 1 }}
+                />
+              </div>
               
               <div style={{ marginBottom: '10px' }}>
                 <span style={{ fontSize: '12px', color: 'black', minWidth: '40px' }}>

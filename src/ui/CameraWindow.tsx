@@ -28,7 +28,7 @@ const CameraWindow: React.FC = () => {
     }
   }, [stream]);
 
-  // Start camera stream with specified device ID and 720p resolution
+  // Start camera stream with specified device ID and 1080p resolution
   const startCameraStream = useCallback(async (deviceId: string) => {
     console.log('Starting camera stream for device:', deviceId);
     stopStream();
@@ -39,8 +39,8 @@ const CameraWindow: React.FC = () => {
     const constraints: MediaStreamConstraints = {
       video: {
         deviceId: { exact: deviceId },
-        width: { ideal: 1280 },
-        height: { ideal: 720 }
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
       },
       audio: false
     };
