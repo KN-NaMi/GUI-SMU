@@ -117,10 +117,12 @@ const Toolbar = ({
   const [voltageLimit, setVoltageLimit] = useState<string>("");
   const [currentMax, setCurrentMax] = useState<string>("");
   const [currentMin, setCurrentMin] = useState<string>("");
+
   const [uMinSafety, setUminSafety] = useState<string>("");
   const [uMaxSafety, setUmaxSafety] = useState<string>("");
   const [iMinSafety, setIminSafety] = useState<string>("");
   const [iMaxSafety, setImaxSafety] = useState<string>("");
+
 
   // State for alerts/popups
   const [showAlert, setShowAlert] = useState<boolean>(false);
@@ -183,6 +185,7 @@ const Toolbar = ({
       const currLimit = convertValue(currentLimit, "current-limiter-units");
       const vMax = parseFloat(voltageMax);
       const vMin = parseFloat(voltageMin);
+
       const zabMinValue = parseFloat(uMinSafety);
       const zabMaxValue = parseFloat(uMaxSafety);
       const isUminSafetyEmpty = uMinSafety.trim() === "";
@@ -226,6 +229,7 @@ const Toolbar = ({
       const vLimit = convertValue(voltageLimit, "voltage-limiter-units");
       const iMax = parseFloat(currentMax);
       const iMin = parseFloat(currentMin);
+
       const zabMinValue = parseFloat(iMinSafety);
       const zabMaxValue = parseFloat(iMaxSafety);
       const isUminSafetyEmpty = uMinSafety.trim() === "";
@@ -259,7 +263,6 @@ const Toolbar = ({
           }
         }
       }
-
       
       return (
         vLimit !== 0 && 
@@ -754,7 +757,7 @@ const Toolbar = ({
           </Menu.Dropdown>
         </Menu>
       </div>
-
+      
       {/* Graph options */}
       <Tabs defaultValue="axes" style={{ marginTop: '0px' }}>
         <Tabs.List>
@@ -846,7 +849,7 @@ const Toolbar = ({
                   size="xs"
                   style={{ width: '150px' }}
                 />
-
+                
                 {measuredValueX === "I" && (
                   <Select
                     value={selectedCurrentUnit}
