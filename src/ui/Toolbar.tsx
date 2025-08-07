@@ -1,10 +1,11 @@
 import { useScale } from '../electron/useScale';
 import './Toolbar.css'
 import { useState, useCallback, useEffect } from "react";
+import { flushSync } from 'react-dom';
 import { DataPoint } from './ScatterChart';
 import { CurrentUnit, VoltageUnit } from './ScaleChartData'
 import { Button, Select, NumberInput, Menu, Checkbox, Tabs, TextInput } from '@mantine/core';
-import { IconPlayerPlayFilled, IconPlayerStopFilled, IconDeviceFloppy, IconRefresh, IconSettings } from '@tabler/icons-react';
+import { IconPlayerPlayFilled, IconPlayerStopFilled, IconDeviceFloppy, IconRefresh, IconSettings, IconCamera } from '@tabler/icons-react';
 
 export type ChartAxisKey = 'current' | 'voltage' | 'step';
 
@@ -70,9 +71,9 @@ const extractPortNumber = (portPath: string): string => {
     return match[1];
   }
 
-  const usbMatch = portPath.match(/ttyUSB(\d+)/i);
-  if (usbMatch && usbMatch[1]) {
-    return usbMatch[1];
+  // Linux:
+  if (portPath.startsWith('/dev/')) {
+    return portPath;
   }
 
   return portPath;
@@ -116,8 +117,12 @@ const Toolbar = ({
   const [voltageLimit, setVoltageLimit] = useState<string>("");
   const [currentMax, setCurrentMax] = useState<string>("");
   const [currentMin, setCurrentMin] = useState<string>("");
-  const [uSafety, setUSafety] = useState<string>("");
-  const [iSafety, setISafety] = useState<string>("");
+
+  const [uMinSafety, setUminSafety] = useState<string>("");
+  const [uMaxSafety, setUmaxSafety] = useState<string>("");
+  const [iMinSafety, setIminSafety] = useState<string>("");
+  const [iMaxSafety, setImaxSafety] = useState<string>("");
+
 
   // State for alerts/popups
   const [showAlert, setShowAlert] = useState<boolean>(false);
@@ -169,6 +174,8 @@ const Toolbar = ({
 
   // Function to check if all values are valid (non-zero, non-negative)
   const checkValues = (isVoltSrc: boolean): boolean => {
+    flushSync(() => {});
+
     const iterationsValue = parseInt(iterations);
     if (isNaN(iterationsValue) || iterations.trim() === "") {
       return false;
@@ -178,11 +185,38 @@ const Toolbar = ({
       const currLimit = convertValue(currentLimit, "current-limiter-units");
       const vMax = parseFloat(voltageMax);
       const vMin = parseFloat(voltageMin);
-      const zabValue = parseFloat(uSafety);
 
-      if(uSafety.trim() !== "" && !isNaN(zabValue) && !isNaN(vMax)) {
-        if (vMax > zabValue) {
-          return false;
+      const zabMinValue = parseFloat(uMinSafety);
+      const zabMaxValue = parseFloat(uMaxSafety);
+      const isUminSafetyEmpty = uMinSafety.trim() === "";
+      const isUmaxSafetyEmpty = uMaxSafety.trim() === "";
+
+      if (isUminSafetyEmpty && isUmaxSafetyEmpty) {
+      }
+      else if (!isUminSafetyEmpty && isUmaxSafetyEmpty) {
+        if (!isNaN(zabMinValue) && !isNaN(vMin)) {
+          if (vMin < zabMinValue) { 
+            return false;
+          }
+        }
+      }
+      else if (isUminSafetyEmpty && !isUmaxSafetyEmpty) {
+        if (!isNaN(zabMaxValue) && !isNaN(vMax)) {
+          if (vMax > zabMaxValue) { 
+            return false;
+          }
+        }
+      }
+      else if (!isUminSafetyEmpty && !isUmaxSafetyEmpty) {
+        if (!isNaN(zabMinValue) && !isNaN(vMin)) {
+          if (vMin < zabMinValue) { 
+            return false;
+          }
+        }
+        if (!isNaN(zabMaxValue) && !isNaN(vMax)) {
+          if (vMax > zabMaxValue) { 
+            return false;
+          }
         }
       }
       
@@ -195,11 +229,38 @@ const Toolbar = ({
       const vLimit = convertValue(voltageLimit, "voltage-limiter-units");
       const iMax = parseFloat(currentMax);
       const iMin = parseFloat(currentMin);
-      const zabValue = parseFloat(iSafety);
 
-      if(iSafety.trim() !== "" && !isNaN(zabValue) && !isNaN(iMax)) {
-        if (iMax > zabValue) {
-          return false;
+      const zabMinValue = parseFloat(iMinSafety);
+      const zabMaxValue = parseFloat(iMaxSafety);
+      const isUminSafetyEmpty = uMinSafety.trim() === "";
+      const isUmaxSafetyEmpty = uMaxSafety.trim() === "";
+
+      if (isUminSafetyEmpty && isUmaxSafetyEmpty) {
+      }
+      else if (!isUminSafetyEmpty && isUmaxSafetyEmpty) {
+        if (!isNaN(zabMinValue) && !isNaN(iMin)) {
+          if (iMin < zabMinValue) {
+            return false;
+          }
+        }
+      }
+      else if (isUminSafetyEmpty && !isUmaxSafetyEmpty) {
+        if (!isNaN(zabMaxValue) && !isNaN(iMax)) {
+          if (iMax > zabMaxValue) {
+            return false;
+          }
+        }
+      }
+      else if (!isUminSafetyEmpty && !isUmaxSafetyEmpty) {
+        if (!isNaN(zabMinValue) && !isNaN(iMin)) {
+          if (iMin < zabMinValue) {
+            return false;
+          }
+        }
+        if (!isNaN(zabMaxValue) && !isNaN(iMax)) {
+          if (iMax > zabMaxValue) {
+            return false;
+          }
         }
       }
       
@@ -225,6 +286,14 @@ const Toolbar = ({
     try {
       const allPorts = await window.serialport.listPorts();
       const simplePorts = allPorts.map((port: { path: string }) => ({ path: port.path }));
+
+      console.log("window.platform:", window.platform);
+      console.log("formatPortDisplay function:", window.platform?.formatPortDisplay);
+      
+      if (simplePorts.length > 0) {
+        const testPath = simplePorts[0].path;
+        console.log("Test format:", window.platform?.formatPortDisplay?.(testPath));
+      }
       
       if (!simplePorts || simplePorts.length === 0) {
         console.log("No COM ports found");
@@ -478,6 +547,27 @@ const Toolbar = ({
                     root: { width: '10px' }
                   }}
                 />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  style={{ 
+                    width: '35px', 
+                    height: '35px', 
+                    padding: 0,
+                    borderRadius: '6px',
+                    marginLeft: '35px'
+                  }}
+                  onClick={async () => {
+                    try {
+                        await window.camera.openWindow();
+                        console.log("Camera window opened");
+                      } catch (error) {
+                        console.error("Error opening camera window:", error);
+                      }
+                    }}
+                >
+                  <IconCamera size={16} />
+                </Button>
               </div>
             </div>
           </>
@@ -619,24 +709,35 @@ const Toolbar = ({
               <Checkbox
                 checked={bothWays}
                 onChange={(e) => setBothWays(e.currentTarget.checked)}
-                label="bothWays"
+                label="Both ways"
                 size="xs"
                 style={{ marginBottom: '5px' }}
               />
               
-              <div style={{ display: 'flex', gap: '3px', alignItems: 'center', marginBottom: '10px' }}>
+              <div style={{ marginBottom: '10px' }}>
                 <span style={{ fontSize: '12px', color: 'black', minWidth: '40px' }}>
-                  {sourceType === "voltage-src" ? "U_safety:" : "I_safety:"}
+                  {sourceType === "voltage-src" ? "U_safety [V]:" : "I_safety [A]:"}
                 </span>
 
-                <NumberInput
-                  placeholder={sourceType === "voltage-src" ? "V" : "A"}
-                  value={sourceType === "voltage-src" ? uSafety : iSafety}
-                  onChange={(value) => sourceType === "voltage-src" ? setUSafety(value?.toString() || "") : setISafety(value?.toString() || "")}
-                  size="xs"
-                  hideControls
-                  style={{ flex: 1 }}
-                />
+                <div style={{ display: 'flex', gap: '5px' }}>
+                  <NumberInput
+                    placeholder="from:"
+                    value={sourceType === "voltage-src" ? uMinSafety : iMinSafety}
+                    onChange={(value) => sourceType === "voltage-src" ? setUminSafety(value?.toString() || "") : setIminSafety(value?.toString() || "")}
+                    size="xs"
+                    hideControls
+                    style={{ flex: 1 }}
+                  />
+
+                  <NumberInput
+                    placeholder="to:"
+                    value={sourceType === "voltage-src" ? uMaxSafety : iMaxSafety}
+                    onChange={(value) => sourceType === "voltage-src" ? setUmaxSafety(value?.toString() || "") : setImaxSafety(value?.toString() || "")}
+                    size="xs"
+                    hideControls
+                    style={{ flex: 1 }}
+                  />
+                </div>
               </div>
 
               <div style={{ display: 'flex', gap: '3px', alignItems: 'center', marginBottom: '10px' }}>
@@ -656,7 +757,7 @@ const Toolbar = ({
           </Menu.Dropdown>
         </Menu>
       </div>
-
+      
       {/* Graph options */}
       <Tabs defaultValue="axes" style={{ marginTop: '0px' }}>
         <Tabs.List>
@@ -742,13 +843,13 @@ const Toolbar = ({
                   value={measuredValueX}
                   onChange={handleChangeX}
                   data={[
-                    { value: 'I', label: 'I' },
-                    { value: 'U', label: 'U' }
+                    { value: 'U', label: 'U' },
+                    { value: 'I', label: 'I' }
                   ]}
                   size="xs"
                   style={{ width: '150px' }}
                 />
-
+                
                 {measuredValueX === "I" && (
                   <Select
                     value={selectedCurrentUnit}
@@ -850,8 +951,8 @@ const Toolbar = ({
                   value={measuredValueY}
                   onChange={handleChangeY}
                   data={[
-                    { value: 'I', label: 'I' },
-                    { value: 'U', label: 'U' }
+                    { value: 'U', label: 'U' },
+                    { value: 'I', label: 'I' }
                   ]}
                   size="xs"
                   style={{ width: '150px' }}

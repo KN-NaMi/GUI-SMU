@@ -28,19 +28,9 @@ dist-electron
 backend/__pycache__/
 backend/.venv/
 backend/process.py
+backend/dist
+backend/build
 
-# Python embedded - ignore installed packages
-backend/python-embedded/Lib/site-packages/
-backend/python-embedded/Scripts/
-backend/python-embedded/get-pip.py
-
-# Python embedded - keep core files
-!backend/python-embedded/python.exe
-!backend/python-embedded/python313.dll
-!backend/python-embedded/python313.zip
-!backend/python-embedded/python313._pth
-!backend/python-embedded/_*.pyd
-!backend/python-embedded/LICENSE.txt
 python/
 release/
 resources/

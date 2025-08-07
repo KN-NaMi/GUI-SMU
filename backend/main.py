@@ -25,6 +25,7 @@ class DataCommand(BaseModel):
     port: Optional[str] = None
     timeout: Optional[int] = 20 #minutes
     delay: Optional[int] = 10
+    repeats: Optional[int] = 1
     isBothWays: Optional[bool] = False
     is4Wire: Optional[bool] = False
     isVoltSrc: Optional[bool] = True
@@ -41,6 +42,7 @@ class TestDataCommand(BaseModel):
     port: Optional[str] = None
     timeout: Optional[int] = 20 #minutes
     delay: Optional[int] = 0.1
+    repeats: Optional[int] = 1
     isBothWays: Optional[bool] = False
     is4Wire: Optional[bool] = False
     isVoltSrc: Optional[bool] = True
@@ -123,20 +125,44 @@ class MeasureProcedure(Procedure):
         if iterations < 2:
             return np.linspace(start, end, iterations)
             
-        if iterations % 2 == 1:
-            num_up = (iterations + 1) // 2
-            sweep_up = np.linspace(start, end, num_up)
-            sweep_down = sweep_up[:-1][::-1] 
-            return np.concatenate((sweep_up, sweep_down))
+        if (start <= 0 <= end) or (end <= 0 <= start):
+            adjusted_iterations = iterations + 2  # Add 2 for the duplicates
+            half_iterations = adjusted_iterations // 2
+            remaining = adjusted_iterations % 2
+            seg2_iter = half_iterations + remaining  # Add remainder to segment 2
+            seg1_and_3_iter = half_iterations
+            
+            # Split seg1_and_3_iter between seg1 and seg3
+            seg1_iter = seg1_and_3_iter // 2 + seg1_and_3_iter % 2 
+            seg3_iter = seg1_and_3_iter // 2
+                
+            # Ensure minimum of 1 iteration for each segment
+            seg1_iter = max(1, seg1_iter)
+            seg2_iter = max(1, seg2_iter)
+            seg3_iter = max(1, seg3_iter)
+                
+            # Create the three segments
+            seg1 = np.linspace(0, end, seg1_iter)      # 0 -> end
+            seg2 = np.linspace(end, start, seg2_iter)  # end -> start
+            seg3 = np.linspace(start, 0, seg3_iter)    # start -> 0
+            
+            return np.concatenate((seg1[:-1], seg2[:-1], seg3))
         else:
-            num_half = iterations // 2
-            sweep_up = np.linspace(start, end, num_half)
-            sweep_down = np.linspace(end, start, num_half)
-            return np.concatenate((sweep_up, sweep_down))
+            if iterations % 2 == 1:
+                num_up = (iterations + 1) // 2
+                sweep_up = np.linspace(start, end, num_up)
+                sweep_down = sweep_up[:-1][::-1]
+                return np.concatenate((sweep_up, sweep_down))
+            else:
+                num_half = iterations // 2
+                sweep_up = np.linspace(start, end, num_half)
+                sweep_down = np.linspace(end, start, num_half)
+                return np.concatenate((sweep_up, sweep_down))
 
     id = IntegerParameter('Process id', default=999)
     iterations = IntegerParameter('Loop Iterations', default=100)
     delay = FloatParameter('Delay Time', units='ms', default=10)
+    repeats = IntegerParameter('Measurement repeats', default=1)
     port = Parameter("port", "")
     DATA_COLUMNS = ['Voltage', 'Current']
     progress = FloatParameter('Progress %', units='%', default=0.0)
@@ -202,6 +228,9 @@ class MeasureProcedure(Procedure):
         manager.add_queue("setup completed")
         
     def execute(self):
+        # Ensure repeats is at least 1
+        if self.repeats < 1:
+            self.repeats = 1
         
         if self.source_type == "VOLT":
             log.info("Starting to measure in VOLT mode")
@@ -214,28 +243,36 @@ class MeasureProcedure(Procedure):
             manager.add_queue("Invalid parameters, stopping execution.")
             return
 
-        for i, setpoint in enumerate(sweep_array):
-        
-            self.meter.source_value = setpoint
-            sleep(self.delay/1000)
-
-            if self.source_type == "VOLT":
-                voltage = setpoint
-                current = self.meter.measured_value
-            else:
-                current = setpoint
-                voltage = self.meter.measured_value
-
-            data = ReturnWebSocket(step=i, current=current, voltage=voltage)
-            manager.add_queue(data.model_dump_json())
-            self.progress = 100. * (i + 1) / self.iterations
+        # Execute the measurement sequence for the specified number of repeats
+        for repeat in range(self.repeats):
+            log.info(f"Starting repeat {repeat + 1} of {self.repeats}")
+            manager.add_queue(f"Starting repeat {repeat + 1} of {self.repeats}")
             
-            self.emit('results', data.model_dump())
-            self.emit('progress', self.progress)
+            for i, setpoint in enumerate(sweep_array):
+            
+                self.meter.source_value = setpoint
+                sleep(self.delay/1000)
 
-            if self.should_stop():
-                log.warning("Catch stop command in procedure, ending measurement.")
-                break
+                if self.source_type == "VOLT":
+                    voltage = setpoint
+                    current = self.meter.measured_value
+                else:
+                    current = setpoint
+                    voltage = self.meter.measured_value
+
+                data = ReturnWebSocket(step=i, current=current, voltage=voltage)
+                manager.add_queue(data.model_dump_json())
+                
+                # Update progress based on both repeat number and iteration within repeat
+                overall_progress = 100. * (repeat * self.iterations + i + 1) / (self.repeats * self.iterations)
+                self.progress = overall_progress
+                
+                self.emit('results', data.model_dump())
+                self.emit('progress', self.progress)
+
+                if self.should_stop():
+                    log.warning("Catch stop command in procedure, ending measurement.")
+                    return
             
 
     def shutdown(self):
@@ -372,6 +409,7 @@ def start_job(command: DataCommand, job_id: int):
     procedure.source_type= "VOLT" if command.isVoltSrc else "CURR"
     procedure.iterations = command.iterations
     procedure.delay = command.delay
+    procedure.repeats = command.repeats
     procedure.is_4_wire = command.is4Wire
     procedure.is_both_ways = command.isBothWays
     if command.isVoltSrc:

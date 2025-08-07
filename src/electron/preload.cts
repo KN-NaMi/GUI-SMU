@@ -85,6 +85,22 @@ const serialPortAPI = {
     }
 };
 
+// API for port formatting
+const platformAPI = {
+    formatPortDisplay: (portPath: string): string => {
+        if (process.platform === 'win32') {
+            return portPath;
+        } else if (process.platform === 'linux') {
+            const usbMatch = portPath.match(/\/dev\/ttyUSB(\d+)/);
+            if (usbMatch) return `USB${usbMatch[1]}`;
+            
+            const acmMatch = portPath.match(/\/dev\/ttyACM(\d+)/);
+            if (acmMatch) return `ACM${acmMatch[1]}`;
+        }
+        return portPath;
+    }
+};
+
 // Add new API for saving files
 const fileSystemAPI = {
     saveMeasurementData: (data: any[]) => {
@@ -92,6 +108,15 @@ const fileSystemAPI = {
     }
 };
 
+// API camera
+const cameraAPI = {
+    openWindow: async (): Promise<void> => {
+        return await ipcRenderer.invoke('open-camera-window');
+    }
+};
+
 electron.contextBridge.exposeInMainWorld("websocket", websocketAPI);
 contextBridge.exposeInMainWorld("serialport", serialPortAPI);
+contextBridge.exposeInMainWorld("platform", platformAPI);
 contextBridge.exposeInMainWorld("fileSystem", fileSystemAPI);
+contextBridge.exposeInMainWorld("camera", cameraAPI);
