@@ -15,6 +15,8 @@ interface DataPoint {
 
 let pythonProcess: ChildProcess | null = null;
 
+let lastUsedDirectory: string | null = null;
+
 // Function to start Python backend
 const startPythonBackend = () => {
     if (isDev()) {
@@ -179,10 +181,13 @@ app.on("ready", ()=>{
 
     // IPC Handler: Save measurement data
     ipcMain.handle('save-measurement-data', async (_, data: DataPoint[]) => {
+        const defaultDirectory = lastUsedDirectory || app.getPath('desktop');
+        const defaultPath = path.join(defaultDirectory, 'measurements.csv');
+
         // Show save dialog
         const { canceled, filePath } = await dialog.showSaveDialog({
             title: 'Save Measurements:',
-            defaultPath: path.join(app.getPath('desktop'), 'measurements.csv'), 
+            defaultPath: defaultPath,
             filters: [
                 { name: 'CSV Files', extensions: ['csv'] },
                 { name: 'Excel Files', extensions: ['xlsx'] },
@@ -195,6 +200,7 @@ app.on("ready", ()=>{
         }
 
         try {
+            lastUsedDirectory = path.dirname(filePath);
             const fileExt = path.extname(filePath).toLowerCase();
         
             if (fileExt === '.csv') {
