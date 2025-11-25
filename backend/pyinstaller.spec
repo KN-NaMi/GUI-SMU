@@ -141,3 +141,5 @@ exe = EXE(
     version=None,
     onefile=True  # Jeden plik exe
 )
+
+# nuitka --standalone --onefile   --assume-yes-for-downloads   --include-package=pyvisa   --include-package=pyvisa_py   --include-module=pyvisa_py.protocols   --include-module=pyvisa_py.highlevel   --include-module=pyvisa_py.sessions   main.py
