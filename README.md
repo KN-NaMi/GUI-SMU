@@ -23,6 +23,31 @@ npm i --save-dev electron-builder
 
 ## Working on the Application  
 
+**Backend - first-time setip (one-time configuration)**  
+Before running the application in developer mode, configure the backend:
+```
+cd backend
+python -m venv .venv
+```
+
+*Activate the virtual environment:*
+- For Windows  
+```
+.venv\Scripts\activate
+```
+- Linux / macOS  
+```
+source .venv/bin/activate
+```
+
+*Install Python dependencies:*
+```
+pip install -r requirements.txt
+```
+
+Creating the virtual environment and installing dependencies is done only once.
+For future runs, just activate the environment again.
+
 1. **Build**  
 ```
 npm run build
