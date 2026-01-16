@@ -23,7 +23,7 @@ npm i --save-dev electron-builder
 
 ## Working on the Application  
 
-**Backend - first-time setip (one-time configuration)**  
+**Backend - first-time setup (one-time configuration)**  
 Before running the application in developer mode, configure the backend:
 ```
 cd backend
