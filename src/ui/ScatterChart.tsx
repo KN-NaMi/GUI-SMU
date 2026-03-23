@@ -40,17 +40,15 @@ const ScatterChart = ({
   
     const width = 1900 * scale;
     const height = 790 * scale;
-    const margin = { top: 20, right: 20, bottom: 50, left: 70 };
+    const margin = { top: 30, right: 40, bottom: 60, left: 80 };
     const symlogConstant = 1;
 
-    // Mapping axis keys to display names
     const axisLabels: Record<ChartAxisKey, string> = {
       voltage: `Voltage [${selectedVoltageUnit}]`,
       current: `Current [${selectedCurrentUnit}]`,
       step: "Step",
     };
 
-    // Creating a linear/symlog scale
     const createScale = (
       type: "linear" | "log",
       domain: [number, number],
@@ -67,9 +65,7 @@ const ScatterChart = ({
         .range(range);
     };
 
-    // Function that generates ticks based on the scale type
     const generateTicks = (type: "linear" | "log" ,min: number, max: number) => {
-      // Linear
       if (type === "linear") {
         return {
           main: d3.ticks(min, max, 10),
@@ -77,7 +73,6 @@ const ScatterChart = ({
         };
       }
 
-      //SymLog
       let mainTicks: number[] = [];
       let minorTicks: number[] = [];
 
@@ -85,7 +80,6 @@ const ScatterChart = ({
       const expRangeStart = Math.floor(Math.log10(Math.max(symlogConstant, maxAbsVal / 1000)));
       const expRangeEnd = Math.ceil(Math.log10(Math.max(symlogConstant, maxAbsVal * 1000)));
 
-      // Ticks for negative numbers
       for (let i = expRangeStart; i <= expRangeEnd; i++) {
         const pow10 = Math.pow(10, i);
 
@@ -108,8 +102,6 @@ const ScatterChart = ({
         }
       }
       
-
-      // Add zero if it's in range
       if (min <= 0 && max >= 0) {
         mainTicks.push(0);
       }
@@ -126,20 +118,16 @@ const ScatterChart = ({
       };
     };
 
-    // Tick labels formatting
     const formatTickLabel = (type: "linear" | "log", d: d3.NumberValue) => {
       const value = d.valueOf();
       
-      // Linear
       if (type === "linear") {
-        if (Math.abs(value) >= 1000 || (Math.abs(value) > 0 && Math.abs(value) < 0.001)) { // Dodano warunek dla bardzo małych liczb
+        if (Math.abs(value) >= 1000 || (Math.abs(value) > 0 && Math.abs(value) < 0.001)) {
           return d3.format(".1e")(value);
         }
-
         return value === 0 ? "0" : d3.format(".2f")(value);
       }
 
-      // SymLog
       if (value === 0) return "0";
       if (value === -1) return "-1";
       if (value === 1) return "1";
@@ -148,7 +136,7 @@ const ScatterChart = ({
       }
       
       const exp = Math.log10(Math.abs(value));
-      const roundedExp = Math.round(exp );
+      const roundedExp = Math.round(exp);
       
       if (value < 0) {
         return roundedExp % 1 === 0 ? `-10^${Math.round(roundedExp)}` : "";
@@ -172,7 +160,6 @@ const ScatterChart = ({
         min = minData - 1;
         max = maxData + 1;
       } else {
-        
         if (scaleType === "linear") {
           const padding = (maxData - minData) * 0.1;
           min = minData - padding;
@@ -215,14 +202,12 @@ const ScatterChart = ({
       return [min, max];
     };
 
-    // Creating scales
     const xDomain = getMinMax(chartData, xAxisDataKey, xScaleType);
     const yDomain = getMinMax(chartData, yAxisDataKey, yScaleType);
 
     const xScale = createScale(xScaleType, xDomain, [margin.left, width - margin.right]);
     const yScale = createScale(yScaleType, yDomain, [height - margin.bottom, margin.top]);
 
-    // Generating ticks
     const xTicks = generateTicks(xScaleType, xDomain[0], xDomain[1]);
     const yTicks = generateTicks(yScaleType, yDomain[0], yDomain[1]);
 
@@ -230,10 +215,7 @@ const ScatterChart = ({
     svg.selectAll("*").remove();
     svg.attr("width", width).attr("height", height);
 
-    // Drawing grid
     const drawGrid = () => {
-
-      // Main grid
       svg.append("g")
         .attr("class", "main-grid")
         .attr("transform", `translate(${margin.left},0)`)
@@ -244,8 +226,8 @@ const ScatterChart = ({
             .tickFormat(() => "")
         )
         .selectAll("line")
-        .attr("stroke", "#a0a0a0") 
-        .attr("stroke-dasharray", "3 3");
+        .attr("stroke", "#E2E8F0") 
+        .attr("stroke-dasharray", "4 4");
 
       svg.append("g")
       .attr("class", "main-grid")
@@ -257,10 +239,9 @@ const ScatterChart = ({
           .tickFormat(() => "")
       )
       .selectAll("line")
-      .attr("stroke", "#a0a0a0")
-      .attr("stroke-dasharray", "3 3");
+      .attr("stroke", "#E2E8F0")
+      .attr("stroke-dasharray", "4 4");
 
-      // Additional minor grid for symlog scale
       if (xScaleType === "log" || yScaleType === "log"){
         svg.append("g")
           .attr("class", "minor-grid")
@@ -272,8 +253,8 @@ const ScatterChart = ({
               .tickFormat(() => "")
           )
           .selectAll("line")
-          .attr("stroke", "#565656")
-          .attr("stroke-width", 0.5)
+          .attr("stroke", "#F1F5F9")
+          .attr("stroke-width", 1)
           .attr("stroke-dasharray", "2 2");
 
         svg.append("g")
@@ -286,15 +267,13 @@ const ScatterChart = ({
               .tickFormat(() => "")
           )
           .selectAll("line")
-          .attr("stroke", "#565656")
-          .attr("stroke-width", 0.5)
+          .attr("stroke", "#F1F5F9")
+          .attr("stroke-width", 1)
           .attr("stroke-dasharray", "2 2");
       }
     };
 
-    // Drawing Axes
     const drawAxes = () => {
-      // Oś X
       svg.append("g")
       .attr("transform", `translate(0,${height - margin.bottom})`)
       .call(
@@ -303,9 +282,9 @@ const ScatterChart = ({
           .tickFormat(d => formatTickLabel(xScaleType, d))
       )
       .selectAll("text")
-      .attr("font-size", `${12 * scale}px`);
+      .attr("font-size", `${12 * scale}px`)
+      .attr("fill", "#64748B");
 
-      // Oś Y
       svg.append("g")
       .attr("transform", `translate(${margin.left},0)`)
       .call(
@@ -314,27 +293,32 @@ const ScatterChart = ({
           .tickFormat(d => formatTickLabel(yScaleType, d))
       )
       .selectAll("text")
-      .attr("font-size", `${12 * scale}px`);
+      .attr("font-size", `${12 * scale}px`)
+      .attr("fill", "#64748B");
+
+      svg.selectAll(".domain").attr("stroke", "#94A3B8");
+      svg.selectAll(".tick line").attr("stroke", "#94A3B8");
     
     svg.append("text")
       .attr("x", width / 2)
-      .attr("y", height - 10)
+      .attr("y", height - 15)
       .attr("text-anchor", "middle")
-      .attr("font-size", `${18 * scale}px`)
-      .attr("fill", "black")
+      .attr("font-size", `${15 * scale}px`)
+      .attr("font-weight", "600")
+      .attr("fill", "#2C3E50")
       .text(axisLabels[xAxisDataKey]);
       
     svg.append("text")
       .attr("transform", "rotate(-90)")
       .attr("x", -height / 2)
-      .attr("y", 15)
+      .attr("y", 25)
       .attr("text-anchor", "middle")
-      .attr("font-size", `${18 * scale}px`)
-      .attr("fill", "black")
+      .attr("font-size", `${15 * scale}px`)
+      .attr("font-weight", "600")
+      .attr("fill", "#2C3E50")
       .text(axisLabels[yAxisDataKey]);
     };
 
-    // Drawing points
     const drawPoints = () => {
       if (chartData.length > 0) {
         svg.append("g")
@@ -344,14 +328,16 @@ const ScatterChart = ({
           .attr("cx", d => xScale(d[xAxisDataKey]))
           .attr("cy", d => yScale(d[yAxisDataKey]))
           .attr("r", 5 * scale)
-          .attr("fill", "steelblue");
+          .attr("fill", "#1976D2")
+          .attr("opacity", "0.8")
+          .attr("stroke", "#0B1C33")
+          .attr("stroke-width", "1px");
       }
     };
 
     drawGrid();
     drawAxes();
     drawPoints();
-    //svg.selectAll(".domain").remove();
 
   }, [scale, data, xScaleType, yScaleType, xAxisDataKey, yAxisDataKey, selectedCurrentUnit, selectedVoltageUnit,]);
   
