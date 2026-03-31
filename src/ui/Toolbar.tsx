@@ -387,20 +387,20 @@ const Toolbar = ({
               size="sm"
               style={{ flex: 1 }}
             />
-            <Button onClick={refreshSerialPorts} variant="outline" size="sm" style={{ padding: '0 10px' }} color="gray">
+            <Button onClick={refreshSerialPorts} className="nami-btn nami-btn-action" size="sm" style={{ padding: '0 10px' }}>
               <IconRefresh size={16} />
             </Button>
           </div>
 
           <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
             <Button 
-              onClick={handleStart} disabled={isMeasuring} variant="filled" color="green" size="md" 
+              onClick={handleStart} disabled={isMeasuring} className="nami-btn nami-btn-primary" size="md" 
               style={{ flex: 1, borderRadius: '8px' }} leftSection={<IconPlayerPlayFilled size={16} />}
             >
               Start
             </Button>
             <Button
-              onClick={handleStop} variant="filled" color="red" size="md" 
+              onClick={handleStop} className="nami-btn nami-btn-danger" size="md" 
               style={{ flex: 1, borderRadius: '8px' }} leftSection={<IconPlayerStopFilled size={16} />}
             >
               Stop
@@ -408,7 +408,7 @@ const Toolbar = ({
           </div>
 
           <Button 
-            onClick={handleSaveData} variant="filled" size="sm" color="blue"
+            onClick={handleSaveData} className="nami-btn nami-btn-save" size="sm"
             leftSection={<IconDeviceFloppy size={16} />} style={{ borderRadius: '8px', marginTop: '5px' }}
           >
             Save Data
@@ -479,7 +479,7 @@ const Toolbar = ({
 
           <Menu shadow="md" width={250} position="right-start">
             <Menu.Target>
-              <Button variant="light" size="sm" color="gray" rightSection={<IconSettings size={15} />} fullWidth>
+              <Button className="nami-btn nami-btn-action" size="sm" rightSection={<IconSettings size={15} color="#FFFFFF" />} fullWidth>
                 More Settings
               </Button>
             </Menu.Target>
@@ -496,16 +496,16 @@ const Toolbar = ({
             </Menu.Dropdown>
           </Menu>
           
-          <Button variant="outline" size="sm" color="gray" leftSection={<IconCamera size={16} />} onClick={async () => {
-              try { await window.camera.openWindow(); } catch (error) {}
-          }}>Open Camera</Button>
+          <Button className="nami-btn nami-btn-action" size="sm" leftSection={<IconCamera size={16} color="#FFFFFF" />} onClick={async () => {
+    try { await window.camera.openWindow(); } catch (error) {}
+}}>Open Camera</Button>
         </div>
       </div>
 
       <div className="nami-card">
         <div className="nami-card-header">Chart Configuration</div>
         <div className="nami-card-content" style={{ padding: '5px 15px 15px 15px' }}>
-          <Tabs defaultValue="axes" color="blue">
+          <Tabs defaultValue="axes" color="indigo">
             <Tabs.List>
               <Tabs.Tab value="axes" style={{ flex: 1 }}>Axis Settings</Tabs.Tab>
               <Tabs.Tab value="series" style={{ flex: 1 }}>Plot Series</Tabs.Tab>
@@ -538,8 +538,8 @@ const Toolbar = ({
             <Tabs.Panel value="series" pt="sm">
               <TextInput label="Series name" placeholder="Enter series name" size="xs" style={{ marginBottom: '10px' }} />
               <div style={{ display: 'flex', gap: '8px' }}>
-                <Button variant="outline" size="xs" style={{ flex: 1 }} color="blue">New</Button>
-                <Button variant="outline" color="red" size="xs" style={{ flex: 1 }}>Delete</Button>
+                <Button className="nami-btn nami-btn-primary" size="xs" style={{ flex: 1 }}>New</Button>
+                <Button className="nami-btn nami-btn-danger" size="xs" style={{ flex: 1 }}>Delete</Button>
               </div>
             </Tabs.Panel>
           </Tabs>

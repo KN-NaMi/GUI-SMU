@@ -27,11 +27,93 @@
   gap: 12px;
 }
 
+.mantine-Tabs-list::before {
+  display: none !important;
+}
+
+.mantine-Tabs-list {
+  border-bottom: 2px solid var(--nami-border) !important;
+  margin-bottom: 15px !important;
+}
+
+.mantine-Tabs-tab {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  border-bottom: 2px solid transparent !important;
+  margin-bottom: -2px !important;
+}
+
+.mantine-Tabs-tab:hover {
+  background-color: rgba(11, 28, 51, 0.03) !important;
+}
+
 .mantine-Tabs-tabLabel, .mantine-InputWrapper-label {
   color: var(--nami-text) !important;
+  transition: color 0.3s ease !important;
+}
+
+.mantine-Tabs-tab[data-active] {
+  border-bottom-color: var(--nami-navy) !important;
 }
 
 .mantine-Tabs-tab[data-active] .mantine-Tabs-tabLabel {
   color: var(--nami-navy) !important;
   font-weight: bold;
 }
+
+.nami-btn {
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s cubic-bezier(0.2, 0, 0, 1), filter 0.2s ease, background-color 0.2s ease !important;
+}
+
+.nami-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+  filter: brightness(1.08);
+}
+
+.nami-btn:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.nami-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.nami-btn-danger {
+  background-color: #b81307 !important;
+  color: white !important;
+  border: none !important;
+}
+
+.nami-btn-primary {
+  background-color: var(--nami-navy) !important;
+  color: white !important;
+  border: none !important;
+}
+
+.nami-btn-blue {
+  background-color: #3498DB !important;
+  color: white !important;
+  border: none !important;
+}
+
+.nami-btn-save {
+  background-color: #013b11!important;
+  color: white !important;
+  border: none !important;
+}
+
+.nami-btn-action {
+  background-color: var(--nami-navy) !important;
+  color: var(--nami-navy) !important;
+  border: 1px solid var(--nami-border) !important;
+  font-weight: 600 !important;
+}
+
+/* .nami-btn-action:hover:not(:disabled) {
+  background-color: #E2E8F0 !important;
+  border-color: #CBD5E1 !important;
+} */
