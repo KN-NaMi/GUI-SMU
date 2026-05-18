@@ -56,7 +56,8 @@ npm run build
 ```
 npm run dev
 ```
-3. **Building the final application** (On Windows, you may need to open Git Bash or, if using a console within an editor such as VS Code, run the editor in administrator mode)  
+3. **Building the final application**  
+`npm run dist:win` runs PyInstaller first (`backend/python-win/main.exe`), then packages Electron. Close any running **GUI-SMU** (or delete `release/` if a previous build left files locked) before rebuilding. Code signing is turned off in `electron-builder.json` so a normal user account does not need Windows symlink privileges for the signing toolchain.  
 - For Windows  
 ```
 npm run dist:win

@@ -25,9 +25,8 @@ const startPythonBackend = () => {
     }
     try {
         // Get platform-specific backend executable path
-        const backendInfo = platformConfig.getBackendPath();
-        const backendDir = path.join(process.resourcesPath, 'backend', backendInfo.dir);
-        const backendPath = path.join(backendDir, backendInfo.executable);
+        const backendDir = path.join(process.resourcesPath, 'backend', 'python-win');
+        const backendPath = path.join(backendDir, 'main.exe');
         
         console.log('Starting backend:', backendPath);
         
@@ -134,7 +133,7 @@ const createCameraWindow = () => {
     if (isDev()) {
         cameraWindow.loadURL('http://localhost:5123/?window=camera');
     } else {
-        cameraWindow.loadFile(path.join(app.getAppPath(), '/dist-react/index.html'), {
+        cameraWindow.loadFile(path.join(app.getAppPath(), 'dist-react', 'index.html'), {
             query: { window: 'camera' }
         });
     }
@@ -163,7 +162,7 @@ app.on("ready", ()=>{
     if (isDev()) {
         mainWindow.loadURL('http://localhost:5123');
     } else {
-        mainWindow.loadFile(path.join(app.getAppPath(), '/dist-react/index.html'));
+        mainWindow.loadFile(path.join(app.getAppPath(), 'dist-react', 'index.html'));
     }
 
     // Start Python backend after window is ready

@@ -1,4 +1,3 @@
-import { useScale } from '../electron/useScale';
 import './Toolbar.css'
 import { useState, useCallback, useEffect } from "react";
 import { flushSync } from 'react-dom';
@@ -91,7 +90,6 @@ const Toolbar = ({
   stopMeasurement,
   data = []
 }: ToolbarProps) => {
-  const scale = useScale();
 
   const [sourceType, setSourceType] = useState<string>("voltage-src");
   const [measuredValueX, setMeasuredValueX] = useState<"I" | "U">("U");
@@ -274,7 +272,6 @@ const Toolbar = ({
       const simplePorts = allPorts.map((port: { path: string }) => ({ path: port.path }));
 
       if (simplePorts.length > 0) {
-        const testPath = simplePorts[0].path;
       }
       
       if (!simplePorts || simplePorts.length === 0) {

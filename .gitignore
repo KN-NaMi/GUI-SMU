@@ -30,6 +30,8 @@ backend/.venv/
 backend/process.py
 backend/dist
 backend/build
+backend/python-win
+backend/pybuild-win
 
 python/
 release/

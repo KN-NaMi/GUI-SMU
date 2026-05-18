@@ -73,7 +73,8 @@ class ConnectionManager:
         self.active_connections = []
         self.queue = []
         self.loop = asyncio.new_event_loop()
-        self.thread = threading.Thread(target=self.run_event_loop, args=(self.loop,))
+        self.thread = threading.Thread(target=self.run_event_loop, args=(self.loop,), daemon=True)
+        
         self.thread.start()
         asyncio.run_coroutine_threadsafe(self.run_queue(), self.loop)
         print("queue started")
@@ -106,11 +107,10 @@ class ConnectionManager:
     
     async def run_queue(self):
         while True:
-            if self.queue:
+            while self.queue:
                 message = self.queue.pop(0)
                 await self.send_measure(message)
-            await asyncio.sleep(0.1) 
-    
+            await asyncio.sleep(0.01)
 # Main procedure
 
 class MeasureProcedure(Procedure):
@@ -389,6 +389,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 work_thread.start()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+        if worker is not None:
+            worker.stop()
     
     
 procedure: MeasureProcedure

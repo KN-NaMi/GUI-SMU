@@ -2,10 +2,12 @@
   "name": "gui-smu",
   "private": true,
   "version": "0.0.0",
+  "author": "KN NaMi",
+  "description": "Keithley 2401 SMU control and measurement GUI",
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
-    "start:backend": "cd backend && .venv\\Scripts\\activate.bat && python main.py",
+    "start:backend": "cd backend && python main.py",
     "start": "concurrently \"npm run dev:react\" \"npm run start:backend\"",
     "dev": "concurrently \"npm run dev:react\" \"npm run start:backend\" \"npm run dev:electron\"",
     "dev:react": "vite",
@@ -14,8 +16,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "transpile:electron": "tsc --project src/electron/tsconfig.json",
+    "build:backend:win": "node scripts/build-backend-win.mjs",
     "dist:mac": "npm run transpile:electron && npm run build && electron-builder --mac --arm64",
-    "dist:win": "npm run transpile:electron && npm run build && electron-builder --win --x64",
+    "dist:win": "npm run build:backend:win && npm run transpile:electron && npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win --x64",
     "dist:linux": "npm run transpile:electron && npm run build && electron-builder --linux --x64"
   },
   "dependencies": {

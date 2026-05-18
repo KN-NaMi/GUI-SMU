@@ -118,28 +118,29 @@ a = Analysis(
 
 pyz = PYZ(a.pure)
 
+# Onefile layout: no COLLECT — all payloads go into EXE (PyInstaller ignores CLI --onefile when using a spec).
 exe = EXE(
     pyz,
     a.scripts,
     a.binaries,
+    a.zipfiles,
     a.datas,
     [],
     name='main',
-    debug=False,  # False = normalny tryb, True = więcej informacji debugowania
+    debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,  # Kompresja UPX - zmniejsza rozmiar
+    upx=False,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=True,  # True = z oknem konsoli
+    console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,  # Bez ikony
+    icon=None,
     version=None,
-    onefile=True  # Jeden plik exe
 )
 
 # nuitka --standalone --onefile   --assume-yes-for-downloads   --include-package=pyvisa   --include-package=pyvisa_py   --include-module=pyvisa_py.protocols   --include-module=pyvisa_py.highlevel   --include-module=pyvisa_py.sessions   main.py

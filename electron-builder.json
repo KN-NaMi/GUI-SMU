@@ -1,5 +1,9 @@
 {
   "appId": "pl.edu.pwr.kn-nami.smu-gui",
+  "productName": "GUI-SMU",
+  "directories": {
+    "output": "release"
+  },
   "files": [
     "dist-electron",
     "dist-react",
@@ -37,9 +41,11 @@
   },
   "win": {
     "target": [ "portable", "msi" ],
-    "sign": false,
-    "verifyUpdateCodeSignature": false,
     "icon": "public/icon.ico",
+    "sign": false,
+    "signDlls": false,
+    "signAndEditExecutable": false,
+    "verifyUpdateCodeSignature": false,
     "extraResources": [
       "node_modules/serialport/**/*",
       "node_modules/exceljs/**/*",
